@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>歐樂沃城堡 - 智慧庫存管理系統</title>
+    
+    <!-- 引入 React 和 ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 引入 Babel 用於解析 JSX (含 TypeScript 支援) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 引入 Tailwind CSS 用於樣式 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- 定義樣式修正 -->
+    <style>
+        body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; background-color: #f3f4f6; }
+        /* 隱藏滾動條但在內容溢出時允許滾動 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="typescript,react">
+        const { useState, useEffect } = React;
+
+        // --- ICON 元件定義 (手動定義 SVG 以免除外部依賴) ---
+        const IconBase = ({ children, size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
+        );
+
+        const Save = (p) => <IconBase {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></IconBase>;
+        const RefreshCw = (p) => <IconBase {...p}><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></IconBase>;
+        const Info = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></IconBase>;
+        const RotateCcw = (p) => <IconBase {...p}><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></IconBase>;
+        // 將原本的 X 改名為 CloseIcon 以避免命名衝突
+        const CloseIcon = (p) => <IconBase {...p}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></IconBase>;
+        const Check = (p) => <IconBase {...p}><polyline points="20 6 9 17 4 12"></polyline></IconBase>;
+        const AlertTriangle = (p) => <IconBase {...p}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></IconBase>;
+        const CloudRain = (p) => <IconBase {...p}><line x1="16" y1="13" x2="16" y2="21"></line><line x1="8" y1="13" x2="8" y2="21"></line><line x1="12" y1="15" x2="12" y2="23"></line><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"></path></IconBase>;
+        const Clock = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></IconBase>;
+        const Calendar = (p) => <IconBase {...p}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></IconBase>;
+        const Sun = (p) => <IconBase {...p}><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></IconBase>;
+        const Moon = (p) => <IconBase {...p}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></IconBase>;
+        const Filter = (p) => <IconBase {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></IconBase>;
+        const Lock = (p) => <IconBase {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></IconBase>;
+        const Unlock = (p) => <IconBase {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></IconBase>;
+        const Trash2 = (p) => <IconBase {...p}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></IconBase>;
+        const Plus = (p) => <IconBase {...p}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></IconBase>;
+        const Edit3 = (p) => <IconBase {...p}><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></IconBase>;
+        const Calculator = (p) => <IconBase {...p}><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M16 10h.01"></path><path d="M12 10h.01"></path><path d="M8 10h.01"></path><path d="M12 14h.01"></path><path d="M8 14h.01"></path><path d="M12 18h.01"></path><path d="M8 18h.01"></path></IconBase>;
+        const DollarSign = (p) => <IconBase {...p}><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></IconBase>;
+        const TrendingUp = (p) => <IconBase {...p}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></IconBase>;
+        const TrendingDown = (p) => <IconBase {...p}><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></IconBase>;
+        const Percent = (p) => <IconBase {...p}><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></IconBase>;
+        const ArrowDownCircle = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></IconBase>;
+        const Leaf = (p) => <IconBase {...p}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></IconBase>;
+
+        // --- 應用程式邏輯 ---
+        
+        // 型別定義 (在 JSDoc 註解中保留，實際運行時 Babel 會移除 TypeScript 語法)
+        type ScheduleType = 'Mon_Fri' | 'Wed_Sun' | 'Sat_Wed' | 'Tue_Sat' | 'Thu_Tue' | 'Tue_Sun' | 'Tue_Fri' | 'Sun_Thu' | 'Fri_Tue' | 'Sun_Fri' | 'Tue_Tue' | 'Mon_Sat' | 'Wed_Mon' | 'Fri_Wed' | 'Sat_Thu';
+
+        interface CookieProduct {
+          id: string;
+          name: string;
+          spec: string;
+          moq: number;
+          isMultiplier: boolean;
+          safetyStock: number;
+          recentPurchaseQty: number | '';
+          actualSellThroughQty: number | ''; 
+        }
+
+        interface CookieScheduleGroup {
+          id: ScheduleType;
+          title: string;
+          items: CookieProduct[];
+        }
+
+        type CakeType = 'mousse' | 'ambient';
+
+        interface CakeProduct {
+          id: string;
+          name: string;
+          type: CakeType;
+          scheduleId: string;
+          manualMultiplier: number;
+          maxQty: number;
+          lastPurchaseQty: number | '';
+          sellThroughQty: number | ''; 
+          currentStock: number | '';    
+          suggestedOrder: number;
+        }
+
+        interface CakeGroup {
+          id: string;
+          title: string;
+          items: CakeProduct[];
+        }
+
+        interface BreadProduct {
+          id: string;
+          name: string;
+          price: number;
+          baseQtyWeekday: number;
+          baseQtyHoliday: number;
+          isHolidayOnly?: boolean;
+          isSeasonal?: boolean;
+          yesterdayUnsold: number | '';
+          suggestedQty: number;
+        }
+
+        // --- 初始資料 ---
+        const INITIAL_COOKIE_DATA: CookieScheduleGroup[] = [
+          { id: 'Mon_Fri', title: '星期一下單，星期五到貨', items: [
+              { id: 'p1', name: 'OREO舒芙蕾圓餅', spec: '最低量5盒以上', moq: 5, isMultiplier: false, safetyStock: 20, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p2', name: '金元寶米菓(個)', spec: '以10的倍數下單', moq: 10, isMultiplier: true, safetyStock: 100, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p3', name: '蜜香夏威夷豆塔(個)', spec: '以10的倍數下單', moq: 10, isMultiplier: true, safetyStock: 100, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p4', name: '香蒜奶油餅乾', spec: '以8的倍數下單 最大量48包', moq: 8, isMultiplier: true, safetyStock: 120, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Mon_Sat', title: '星期一下單，星期六到貨', items: [
+              { id: 'p7', name: '法式香草餅乾', spec: '以罐下單', moq: 1, isMultiplier: false, safetyStock: 20, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p8', name: '香草巧克力餅乾', spec: '以罐下單', moq: 1, isMultiplier: false, safetyStock: 20, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Tue_Sat', title: '星期二下單，星期六到貨', items: [
+              { id: 'p12', name: '滑溜布丁', spec: '最低量5個以上', moq: 5, isMultiplier: false, safetyStock: 50, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Tue_Tue', title: '星期二下單，下星期二到貨', items: [
+             { id: 'p14', name: '厚味牛奶棒', spec: '以罐下單', moq: 1, isMultiplier: false, safetyStock: 30, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Tue_Sun', title: '星期二下單，星期日到貨', items: [
+              { id: 'p13', name: '起司卡滋棒', spec: '以袋下單', moq: 1, isMultiplier: false, safetyStock: 80, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Wed_Sun', title: '星期三下單，星期日到貨', items: [
+              { id: 'p5', name: '卡滋小帕芙(罐)', spec: '最低量5罐以上', moq: 5, isMultiplier: false, safetyStock: 190, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Wed_Mon', title: '星期三下單，星期一到貨', items: [
+              { id: 'p9', name: '咖啡酥(罐)', spec: '以罐下單', moq: 1, isMultiplier: false, safetyStock: 20, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p10', name: '鳳凰酥', spec: '以12的倍數下單', moq: 12, isMultiplier: true, safetyStock: 180, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p11', name: '金鑽鳳梨酥(個)', spec: '以10的倍數下單', moq: 10, isMultiplier: true, safetyStock: 200, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Thu_Tue', title: '星期四下單，星期二到貨', items: [
+              { id: 'p15', name: '杏仁瓦片', spec: '以10的倍數下單', moq: 10, isMultiplier: true, safetyStock: 60, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p16', name: '海苔薄餅', spec: '以罐下單', moq: 1, isMultiplier: false, safetyStock: 15, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Fri_Wed', title: '星期五下單，星期三到貨', items: [
+                { id: 'p17', name: '芙蘿餅乾(2入)', spec: '以10的倍數下單', moq: 10, isMultiplier: true, safetyStock: 60, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Sat_Wed', title: '星期六下單，星期三到貨', items: [
+              { id: 'p6', name: 'OREO舒芙蕾圓餅', spec: '最低量5盒以上', moq: 5, isMultiplier: false, safetyStock: 20, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Sat_Thu', title: '星期六下單，星期四到貨', items: [
+              { id: 'p18', name: '脆脆千層捲', spec: '以10的倍數下單', moq: 10, isMultiplier: true, safetyStock: 50, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p19', name: '香草杏仁奇普(罐)', spec: '以罐下單', moq: 1, isMultiplier: false, safetyStock: 10, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p20', name: '巧克力杏仁奇普(罐)', spec: '以罐下單', moq: 1, isMultiplier: false, safetyStock: 25, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Sun_Thu', title: '星期日下單，星期四到貨', items: [
+              { id: 'p21', name: '滑溜布丁(原味)', spec: '最低量5個以上', moq: 5, isMultiplier: false, safetyStock: 20, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Sun_Fri', title: '星期日下單，星期五到貨', items: [
+              { id: 'p22', name: '原味曲奇餅乾(鐵盒)', spec: '最低量3盒以上', moq: 3, isMultiplier: false, safetyStock: 8, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p23', name: '巧克力曲奇餅乾(鐵盒)', spec: '最低量3盒以上', moq: 3, isMultiplier: false, safetyStock: 10, recentPurchaseQty: '', actualSellThroughQty: '' },
+              { id: 'p24', name: '日式焦糖布蕾餅(包)', spec: '以10的倍數下單', moq: 10, isMultiplier: true, safetyStock: 100, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]}
+        ];
+
+        const INITIAL_CAKE_DATA: CakeGroup[] = [
+          { id: 'Group1', title: '第一組 (週一/四/日下單)', items: [
+              { id: 'c1', name: '乳酪蛋糕', type: 'mousse', scheduleId: 'Group1', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 9.4, currentStock: '', suggestedOrder: 0 },
+              { id: 'c2', name: '金芒雲階', type: 'mousse', scheduleId: 'Group1', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 8.8, currentStock: '', suggestedOrder: 0 },
+              { id: 'c3', name: '可可雲階', type: 'mousse', scheduleId: 'Group1', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 9.5, currentStock: '', suggestedOrder: 0 },
+              { id: 'c4', name: '白雪公主', type: 'mousse', scheduleId: 'Group1', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 8.5, currentStock: '', suggestedOrder: 0 },
+          ]},
+          { id: 'Group2', title: '第二組 (週二/五下單)', items: [
+              { id: 'c5', name: '起酥泡芙', type: 'mousse', scheduleId: 'Group2', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 9.5, currentStock: '', suggestedOrder: 0 },
+              { id: 'c6', name: '蒙德烈國王', type: 'mousse', scheduleId: 'Group2', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 9.3, currentStock: '', suggestedOrder: 0 },
+              { id: 'c7', name: '愛戀莓果覆盆子', type: 'mousse', scheduleId: 'Group2', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 9.2, currentStock: '', suggestedOrder: 0 },
+          ]},
+          { id: 'Group3', title: '第三組 (週三/六下單)', items: [
+              { id: 'c8', name: '黑曜之冠', type: 'mousse', scheduleId: 'Group3', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 8.0, currentStock: '', suggestedOrder: 0 },
+              { id: 'c9', name: '檸香橙花', type: 'mousse', scheduleId: 'Group3', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 8.7, currentStock: '', suggestedOrder: 0 },
+              { id: 'c10', name: '仲莓慕心', type: 'mousse', scheduleId: 'Group3', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 8.4, currentStock: '', suggestedOrder: 0 },
+              { id: 'c11', name: '慕光香檸', type: 'mousse', scheduleId: 'Group3', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 9.6, currentStock: '', suggestedOrder: 0 },
+          ]},
+          { id: 'Group4', title: '其他品項 (每日)', items: [
+              { id: 'c12', name: '藍調月光', type: 'mousse', scheduleId: 'Group4', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 9.5, currentStock: '', suggestedOrder: 0 },
+              { id: 'c13', name: '深巧濃心', type: 'mousse', scheduleId: 'Group4', manualMultiplier: 6, maxQty: 40, lastPurchaseQty: 10, sellThroughQty: 8.9, currentStock: '', suggestedOrder: 0 },
+          ]}
+        ];
+
+        const INITIAL_BREAD_DATA: BreadProduct[] = [
+          { id: 'b8', name: '焦糖奶油手撕包', price: 100, baseQtyWeekday: 20, baseQtyHoliday: 60, yesterdayUnsold: '', suggestedQty: 0 }, 
+          { id: 'b7', name: '酒釀桂圓', price: 76, baseQtyWeekday: 15, baseQtyHoliday: 42, yesterdayUnsold: '', suggestedQty: 0 }, 
+          { id: 'b12', name: '香蒜巴西里', price: 52, baseQtyWeekday: 12, baseQtyHoliday: 38, yesterdayUnsold: '', suggestedQty: 0 }, 
+          { id: 'b9', name: '岩鹽可頌', price: 36, baseQtyWeekday: 18, baseQtyHoliday: 32, yesterdayUnsold: '', suggestedQty: 0 }, 
+          { id: 'b10', name: '玫瑰乳酪', price: 40, baseQtyWeekday: 12, baseQtyHoliday: 24, yesterdayUnsold: '', suggestedQty: 0 }, 
+          { id: 'b6', name: '巧克力法圈', price: 42, baseQtyWeekday: 10, baseQtyHoliday: 20, yesterdayUnsold: '', suggestedQty: 0 }, 
+          { id: 'b4', name: '丹麥菠蘿', price: 45, baseQtyWeekday: 5, baseQtyHoliday: 18, yesterdayUnsold: '', suggestedQty: 0 },
+          { id: 'b5', name: '丹麥奶酥菠蘿', price: 47, baseQtyWeekday: 6, baseQtyHoliday: 18, yesterdayUnsold: '', suggestedQty: 0 },
+          { id: 'b15', name: '燻雞沙拉', price: 85, baseQtyWeekday: 5, baseQtyHoliday: 20, yesterdayUnsold: '', suggestedQty: 0 },
+          { id: 'b2', name: '蒜味羅宋(3入)', price: 150, baseQtyWeekday: 6, baseQtyHoliday: 14, yesterdayUnsold: '', suggestedQty: 0 },
+          { id: 'b3', name: '起士羅宋(3入)', price: 150, baseQtyWeekday: 6, baseQtyHoliday: 14, yesterdayUnsold: '', suggestedQty: 0 },
+          { id: 'b14', name: '鮪魚三明治', price: 60, baseQtyWeekday: 3, baseQtyHoliday: 10, yesterdayUnsold: '', suggestedQty: 0 },
+          { id: 'b13', name: '活力草莓三明治', price: 35, baseQtyWeekday: 3, baseQtyHoliday: 8, yesterdayUnsold: '', suggestedQty: 0 }, 
+          { id: 'b11_4', name: '大理石餐包(4入)', price: 72, baseQtyWeekday: 3, baseQtyHoliday: 8, yesterdayUnsold: '', suggestedQty: 0 },
+          // 假日限定區
+          { id: 'b1', name: '大布莉(6入)', price: 168, baseQtyWeekday: 0, baseQtyHoliday: 8, isHolidayOnly: true, yesterdayUnsold: '', suggestedQty: 0 }, 
+          { id: 'b16', name: '城堡洋蔥吐司', price: 135, baseQtyWeekday: 0, baseQtyHoliday: 5, isHolidayOnly: true, yesterdayUnsold: '', suggestedQty: 0 }, 
+          { id: 'b17', name: '城堡巧克力餐包(6入)', price: 150, baseQtyWeekday: 0, baseQtyHoliday: 6, isHolidayOnly: true, yesterdayUnsold: '', suggestedQty: 0 },
+        ];
+
+        const STORAGE_KEY = 'inventory_system_data_v22_offline';
+
+        const DAY_GROUP_MAP: Record<string, string[]> = {
+          'Mon': ['Group1', 'Group4'],
+          'Tue': ['Group2', 'Group4'],
+          'Wed': ['Group3', 'Group4'],
+          'Thu': ['Group1', 'Group4'],
+          'Fri': ['Group2', 'Group4'],
+          'Sat': ['Group3', 'Group4'],
+          'Sun': ['Group1', 'Group4'],
+          'All': ['Group1', 'Group2', 'Group3', 'Group4']
+        };
+
+        const DAY_OPTIONS = [
+          { value: 'Mon', label: '星期一 (Mon)' },
+          { value: 'Tue', label: '星期二 (Tue)' },
+          { value: 'Wed', label: '星期三 (Wed)' },
+          { value: 'Thu', label: '星期四 (Thu)' },
+          { value: 'Fri', label: '星期五 (Fri)' },
+          { value: 'Sat', label: '星期六 (Sat)' },
+          { value: 'Sun', label: '星期日 (Sun)' },
+          { value: 'All', label: '顯示全部 (All)' },
+        ];
+
+        // --- UI Components ---
+
+        const Toast = ({ message, type, onClose }) => {
+          useEffect(() => {
+            const timer = setTimeout(onClose, 3000);
+            return () => clearTimeout(timer);
+          }, [onClose]);
+
+          return (
+            <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300 translate-y-0 ${
+              type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+            }`}>
+              {type === 'success' ? <Check size={18} /> : <AlertTriangle size={18} />}
+              <span className="font-medium">{message}</span>
+              <button onClick={onClose} className="ml-2 hover:bg-white/20 rounded-full p-1">
+                <CloseIcon size={14} /> 
+              </button>
+            </div>
+          );
+        };
+
+        const Modal = ({ isOpen, title, content, onConfirm, onCancel, confirmText = "確定", cancelText = "取消", type = 'info' }) => {
+          if (!isOpen) return null;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className={`p-4 border-b flex items-center gap-2 ${type === 'warning' ? 'bg-amber-50 border-amber-100' : 'bg-gray-50 border-gray-100'}`}>
+                  {type === 'warning' && <AlertTriangle className="text-amber-600" size={20} />}
+                  <h3 className={`font-bold ${type === 'warning' ? 'text-amber-800' : 'text-gray-800'}`}>{title}</h3>
+                </div>
+                <div className="p-6 text-gray-600">
+                  {content}
+                </div>
+                <div className="p-4 bg-gray-50 flex justify-end gap-3">
+                  <button onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                    {cancelText}
+                  </button>
+                  <button onClick={onConfirm} className={`px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm transition-colors ${type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                    {confirmText}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // --- Main Component ---
+
+        function InventorySystem() {
+          const [activeTab, setActiveTab] = useState('cookies');
+          const [cookieData, setCookieData] = useState(INITIAL_COOKIE_DATA);
+          const [cakeData, setCakeData] = useState(INITIAL_CAKE_DATA);
+          const [breadData, setBreadData] = useState(INITIAL_BREAD_DATA);
+          
+          const [targetSellThroughRate, setTargetSellThroughRate] = useState(85);
+          const [cakeArrivalType, setCakeArrivalType] = useState('weekday'); 
+          const [isRaining, setIsRaining] = useState(false);
+          const [isAfter4PM, setIsAfter4PM] = useState(false);
+          const [holidayMultiplier, setHolidayMultiplier] = useState(1.0);
+          const [orderDay, setOrderDay] = useState('All'); 
+          const [isEditMode, setIsEditMode] = useState(false); 
+
+          const [breadOrderAmount, setBreadOrderAmount] = useState(8000); 
+          const [breadAverageRate, setBreadAverageRate] = useState(2.5); 
+          const [breadRecentRate, setBreadRecentRate] = useState(2.0); 
+          const [isBreadHoliday, setIsBreadHoliday] = useState(false); 
+          const [calculatedBreadTarget, setCalculatedBreadTarget] = useState(null);
+
+          const [lastSaved, setLastSaved] = useState(null);
+          const [toast, setToast] = useState(null);
+          const [modal, setModal] = useState({ isOpen: false, title: '', content: null, action: null, type: 'info' });
+
+          // --- Initialization & Storage ---
+          useEffect(() => {
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            if (savedData) {
+              try {
+                const parsed = JSON.parse(savedData);
+                if (parsed.cookieData) setCookieData(parsed.cookieData);
+                if (parsed.cakeData) setCakeData(parsed.cakeData);
+                if (parsed.breadData) setBreadData(parsed.breadData);
+                if (parsed.settings) {
+                    if (parsed.settings.targetSellThroughRate) setTargetSellThroughRate(parsed.settings.targetSellThroughRate);
+                    if (parsed.settings.breadOrderAmount) setBreadOrderAmount(parsed.settings.breadOrderAmount);
+                }
+                const now = new Date();
+                setLastSaved(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+              } catch (e) {
+                console.error("Failed to load saved data", e);
+              }
+            }
+          }, []);
+
+          const showToast = (message, type = 'success') => {
+            setToast({ show: true, message, type });
+          };
+
+          const handleSave = () => {
+            try {
+              const dataToSave = {
+                cookieData,
+                cakeData,
+                breadData,
+                settings: { targetSellThroughRate, breadOrderAmount }
+              };
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+              const now = new Date();
+              const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+              setLastSaved(timeStr);
+              showToast('所有資料已成功儲存！', 'success');
+            } catch (e) {
+              showToast('儲存失敗，可能是瀏覽器空間不足。', 'error');
+            }
+          };
+
+          const handleResetRequest = () => {
+            setModal({
+              isOpen: true,
+              title: '確認重置資料',
+              type: 'warning',
+              content: (
+                <div className="space-y-2">
+                  <p>確定要重置所有資料回到預設值嗎？</p>
+                  <p className="text-sm text-red-500 font-medium">警告：這將會清除您所有的修改紀錄，且無法復原。</p>
+                </div>
+              ),
+              action: performReset
+            });
+          };
+
+          const performReset = () => {
+            setCookieData(INITIAL_COOKIE_DATA);
+            setCakeData(INITIAL_CAKE_DATA);
+            setBreadData(INITIAL_BREAD_DATA);
+            localStorage.removeItem(STORAGE_KEY);
+            setLastSaved(null);
+            setModal(prev => ({ ...prev, isOpen: false }));
+            showToast('系統資料已重置回預設值', 'success');
+          };
+
+          // --- Cookie Logic ---
+          const calculateCookieSuggestedStock = (item) => {
+            if (item.recentPurchaseQty === '' || item.recentPurchaseQty === 0 || 
+                item.actualSellThroughQty === '' || item.actualSellThroughQty === undefined) {
+                return item.safetyStock;
+            }
+            const purchase = Number(item.recentPurchaseQty);
+            const sold = Number(item.actualSellThroughQty);
+            const actualRate = (sold / purchase) * 100;
+            const rateDiff = (actualRate - targetSellThroughRate) / 100;
+            const clampedDiff = Math.max(-0.5, Math.min(0.5, rateDiff));
+            const newStock = Math.round(item.safetyStock * (1 + clampedDiff));
+            return newStock > 0 ? newStock : 0;
+          };
+
+          const updateCookieItem = (groupId, itemId, field, value) => {
+            setCookieData(prev => prev.map(group => {
+              if (group.id !== groupId) return group;
+              return {
+                ...group,
+                items: group.items.map(item => {
+                  if (item.id !== itemId) return item;
+                  return { ...item, [field]: value };
+                })
+              };
+            }));
+          };
+
+          const addCookieItem = (groupId) => {
+            const newItem = {
+                id: `new_${Date.now()}`,
+                name: '新餅乾品項',
+                spec: '預設規格',
+                moq: 1,
+                isMultiplier: false,
+                safetyStock: 10,
+                recentPurchaseQty: '',
+                actualSellThroughQty: ''
+            };
+            setCookieData(prev => prev.map(group => 
+                group.id === groupId ? { ...group, items: [...group.items, newItem] } : group
+            ));
+            showToast('已新增品項，請編輯內容', 'success');
+          };
+
+          const deleteCookieItem = (groupId, itemId) => {
+             if (!window.confirm("確定要刪除此品項嗎？")) return;
+             setCookieData(prev => prev.map(group => 
+                group.id === groupId ? { ...group, items: group.items.filter(i => i.id !== itemId) } : group
+            ));
+          };
+
+          const applyCookieSuggestions = () => {
+            const newData = cookieData.map(group => ({
+              ...group,
+              items: group.items.map(item => {
+                const suggested = calculateCookieSuggestedStock(item);
+                const shouldUpdate = item.actualSellThroughQty !== '' && item.actualSellThroughQty !== undefined && item.recentPurchaseQty !== '';
+                if (shouldUpdate) {
+                  return { ...item, safetyStock: suggested, actualSellThroughQty: '', recentPurchaseQty: '' };
+                }
+                return item;
+              })
+            }));
+            setCookieData(newData);
+            setModal(prev => ({ ...prev, isOpen: false }));
+            showToast('✅ 餅乾安庫量已更新完成！', 'success');
+          };
+
+          // --- Cake Logic ---
+          const updateCakeItem = (groupId, itemId, field, value) => {
+            setCakeData(prev => prev.map(group => {
+              if (group.id !== groupId) return group;
+              return {
+                ...group,
+                items: group.items.map(item => {
+                  if (item.id !== itemId) return item;
+                  return { ...item, [field]: value };
+                })
+              };
+            }));
+          };
+
+          const addCakeItem = (groupId, scheduleId) => {
+            const newItem = {
+                id: `new_${Date.now()}`,
+                name: '新蛋糕品項',
+                type: 'mousse',
+                scheduleId: scheduleId,
+                manualMultiplier: 6,
+                maxQty: 40,
+                lastPurchaseQty: '',
+                currentStock: '',
+                sellThroughQty: '',
+                suggestedOrder: 0
+            };
+            setCakeData(prev => prev.map(group => 
+                group.id === groupId ? { ...group, items: [...group.items, newItem] } : group
+            ));
+            showToast('已新增品項，請編輯內容', 'success');
+          };
+
+          const deleteCakeItem = (groupId, itemId) => {
+            if (!window.confirm("確定要刪除此品項嗎？")) return;
+            setCakeData(prev => prev.map(group => 
+               group.id === groupId ? { ...group, items: group.items.filter(i => i.id !== itemId) } : group
+           ));
+          };
+
+          const calculateCakeOrders = () => {
+            const baseTotalTarget = cakeArrivalType === 'weekday' ? 100 : 170;
+            let effectiveTotalTarget = baseTotalTarget * holidayMultiplier;
+            if (isRaining) effectiveTotalTarget *= 0.9;
+            if (isAfter4PM) effectiveTotalTarget *= 0.7;
+            
+            const activeGroupIds = DAY_GROUP_MAP[orderDay] || [];
+            const allItems = cakeData.flatMap(g => g.items);
+            const activeItems = allItems.filter(item => 
+                orderDay === 'All' || activeGroupIds.includes(item.scheduleId)
+            );
+
+            let totalCurrentStock = 0;
+            activeItems.forEach(item => {
+                if (item.currentStock !== '' && item.currentStock !== undefined) {
+                    totalCurrentStock += Number(item.currentStock);
+                }
+            });
+
+            let netOrderPool = effectiveTotalTarget - totalCurrentStock;
+            if (netOrderPool < 0) netOrderPool = 0;
+
+            let totalRateScore = 0;
+            const itemsWithRates = activeItems.map(item => {
+                let rate = 0;
+                if (item.lastPurchaseQty && Number(item.lastPurchaseQty) > 0 && item.sellThroughQty) {
+                    rate = Number(item.sellThroughQty) / Number(item.lastPurchaseQty);
+                }
+                return { ...item, calculatedRate: rate };
+            });
+
+            itemsWithRates.forEach(item => { totalRateScore += item.calculatedRate; });
+
+            const newData = cakeData.map(group => ({
+              ...group,
+              items: group.items.map(item => {
+                if (orderDay !== 'All' && !activeGroupIds.includes(item.scheduleId)) {
+                    return { ...item, suggestedOrder: 0 };
+                }
+                let rawOrder = 0;
+                const rateInfo = itemsWithRates.find(i => i.id === item.id);
+                const myRate = rateInfo ? rateInfo.calculatedRate : 0;
+
+                if (totalRateScore > 0) {
+                    const share = myRate / totalRateScore;
+                    rawOrder = netOrderPool * share;
+                } else {
+                    rawOrder = activeItems.length > 0 ? (netOrderPool / activeItems.length) : 0;
+                }
+
+                const multiplier = item.manualMultiplier || 1;
+                let finalOrder = multiplier > 1 ? Math.ceil(rawOrder / multiplier) * multiplier : Math.round(rawOrder);
+                if (finalOrder > item.maxQty) finalOrder = item.maxQty;
+                if (item.type === 'ambient' && finalOrder < 5 && finalOrder > 0) finalOrder = 5; 
+
+                return { ...item, suggestedOrder: finalOrder };
+              })
+            }));
+            setCakeData(newData);
+            showToast(`已完成分配！(依下架率分配 ${Math.round(netOrderPool)} 個額度)`, 'success');
+          };
+
+          // --- Bread Logic ---
+          const updateBreadItem = (itemId, field, value) => {
+              setBreadData(prev => prev.map(item => 
+                  item.id === itemId ? { ...item, [field]: value } : item
+              ));
+          };
+
+          const addBreadItem = () => {
+            const newItem = {
+              id: `b_new_${Date.now()}`,
+              name: '新品項麵包',
+              price: 0,
+              baseQtyWeekday: 0,
+              baseQtyHoliday: 0,
+              suggestedQty: 0,
+              yesterdayUnsold: '',
+              isHolidayOnly: false
+            };
+            setBreadData(prev => [...prev, newItem]);
+          };
+
+          const deleteBreadItem = (itemId) => {
+            if (!window.confirm("確定要刪除此品項嗎？")) return;
+            setBreadData(prev => prev.filter(item => item.id !== itemId));
+          };
+
+          const calculateBreadOrders = () => {
+              if (breadOrderAmount === '' || breadAverageRate === '') {
+                  showToast('請輸入完整的今日下單金額與下架率', 'error');
+                  return;
+              }
+              const avgAmount = Number(breadOrderAmount);
+              const recentRate = breadRecentRate === '' ? 0 : Number(breadRecentRate);
+              let targetAmount = avgAmount * 1.02; 
+              if (recentRate > 4) {
+                  const deduction = isBreadHoliday ? 800 : 500;
+                  targetAmount -= deduction;
+              }
+              const randomAdjustment = Math.floor(Math.random() * 201) - 100;
+              targetAmount += randomAdjustment;
+              targetAmount = Math.round(targetAmount);
+              setCalculatedBreadTarget(targetAmount);
+
+              const activeBreadItems = breadData.filter(item => {
+                  if (!isBreadHoliday && item.isHolidayOnly) return false;
+                  return true;
+              });
+
+              let totalEffectiveValue = 0;
+              const itemsWithEffectiveQty = activeBreadItems.map(item => {
+                  const currentBaseQty = isBreadHoliday ? item.baseQtyHoliday : item.baseQtyWeekday;
+                  let effectiveQty = currentBaseQty;
+                  if (item.yesterdayUnsold && Number(item.yesterdayUnsold) > 0) {
+                      const unsold = Number(item.yesterdayUnsold);
+                      effectiveQty = Math.max(0, currentBaseQty - unsold); 
+                  }
+                  totalEffectiveValue += item.price * effectiveQty;
+                  return { ...item, effectiveQty };
+              });
+              
+              if (totalEffectiveValue === 0) {
+                  showToast('無法分配：請設定麵包單價與基準量，或檢查有效品項', 'error');
+                  return;
+              }
+              const ratio = targetAmount / totalEffectiveValue;
+              const newBreadData = breadData.map(item => {
+                  const activeItem = itemsWithEffectiveQty.find(ai => ai.id === item.id);
+                  if (!activeItem) return { ...item, suggestedQty: 0 };
+                  return { ...item, suggestedQty: Math.round(activeItem.effectiveQty * ratio) };
+              });
+              setBreadData(newBreadData);
+              showToast(`計算完成！目標金額 $${targetAmount}`, 'success');
+          };
+
+          return (
+            <div className="min-h-screen bg-gray-100 p-2 md:p-6 font-sans text-gray-800">
+              {toast?.show && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+              <Modal isOpen={modal.isOpen} title={modal.title} content={modal.content} type={modal.type} onConfirm={() => modal.action && modal.action()} onCancel={() => setModal(prev => ({ ...prev, isOpen: false }))} />
+              
+              <div className="bg-white rounded-lg shadow-sm mb-4 p-2 flex gap-2 overflow-x-auto">
+                 <button onClick={() => setActiveTab('cookies')} className={`flex-1 py-3 px-4 rounded-md font-bold text-lg transition-all ${activeTab === 'cookies' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>手工餅乾庫存</button>
+                 <button onClick={() => setActiveTab('cakes')} className={`flex-1 py-3 px-4 rounded-md font-bold text-lg transition-all ${activeTab === 'cakes' ? 'bg-emerald-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>慕斯小蛋糕下單</button>
+                 <button onClick={() => setActiveTab('bread')} className={`flex-1 py-3 px-4 rounded-md font-bold text-lg transition-all ${activeTab === 'bread' ? 'bg-amber-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>麵包自動配單</button>
+              </div>
+
+              <header className={`mb-6 p-4 rounded-lg shadow-sm border-l-4 ${activeTab === 'cookies' ? 'bg-white border-indigo-600' : activeTab === 'cakes' ? 'bg-emerald-50 border-emerald-600' : 'bg-amber-50 border-amber-600'}`}>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h1 className="text-xl md:text-2xl font-bold text-gray-900">{activeTab === 'cookies' ? '手工餅乾 智慧安庫管理系統' : activeTab === 'cakes' ? '慕斯小蛋糕 自動化建議下單' : '麵包部門 智慧預算配單系統'}</h1>
+                    <p className="text-sm text-gray-500 mt-1">{activeTab === 'cookies' ? '自動化庫存校正模組 | 輸入進貨量與下架數量以優化庫存' : activeTab === 'cakes' ? '智慧分配模組 | 根據到貨日總量自動計算建議訂購量' : '預算分配模組 | 根據下架率自動計算進貨總金額並分配數量'}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                      <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2 rounded-full transition-colors ${isEditMode ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400 hover:text-gray-600'}`} title={isEditMode ? "結束編輯模式" : "進入編輯模式"}>{isEditMode ? <Unlock size={20} /> : <Lock size={20} />}</button>
+                      <div className="h-8 w-px bg-gray-300 mx-1"></div>
+                      <button onClick={handleResetRequest} className="text-gray-400 hover:text-red-500 p-2 transition-colors rounded-full hover:bg-red-50" title="重置全部資料"><RotateCcw size={18} /></button>
+                      <button onClick={handleSave} className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2 rounded-md transition-colors flex items-center gap-2 shadow-sm font-medium"><Save size={18} /> 存檔</button>
+                  </div>
+                </div>
+              </header>
+
+              {isEditMode && (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-md mb-4 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                      <Edit3 size={18} />
+                      <span className="font-bold text-sm">目前為編輯模式：</span>
+                      <span className="text-sm">您可以直接修改品項名稱、規格、刪除舊品項或新增新品項。完成後請點擊上方鎖頭鎖定。</span>
+                  </div>
+              )}
+
+              {/* === COOKIE TAB === */}
+              {activeTab === 'cookies' && (
+                <div className="animate-in fade-in duration-300">
+                    <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4 border border-indigo-100 sticky top-2 z-10 shadow-md">
+                        <div className="flex items-center gap-4 bg-indigo-50 px-4 py-3 rounded-lg border border-indigo-200 w-full md:w-auto">
+                            <label className="text-xs font-bold text-indigo-700 flex items-center gap-1">目標下架率 <Info size={12} /></label>
+                            <div className="flex items-center gap-2">
+                                <input type="number" value={targetSellThroughRate} onChange={(e) => setTargetSellThroughRate(Number(e.target.value))} className="w-16 px-2 py-1 border border-indigo-300 rounded text-center font-bold text-indigo-800 outline-none" />
+                                <span className="text-indigo-600 font-bold">%</span>
+                            </div>
+                        </div>
+                        <button onClick={() => setModal({ isOpen: true, title: '確認應用建議值', content: '確定要將所有商品的「目前安庫」更新為計算後的「建議安庫」嗎？', action: applyCookieSuggestions, type: 'info' })} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-md text-sm font-bold flex items-center gap-2 shadow-sm">
+                            <RefreshCw size={18} /> 應用建議值
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {cookieData.map((group) => (
+                        <div key={group.id} className="bg-white border border-gray-300 shadow-sm flex flex-col rounded-md overflow-hidden h-full">
+                            <div className="bg-gray-50 border-b border-gray-300 p-3"><span className="font-bold text-gray-700 text-sm">{group.title}</span></div>
+                            <div className="overflow-x-auto flex-1">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                <tr className="bg-gray-100 text-xs text-gray-600 font-semibold border-b border-gray-300">
+                                    <th className="p-2 border-r min-w-[100px]">品名</th>
+                                    <th className="p-2 border-r w-16 text-center text-blue-800 bg-blue-50">進貨量</th>
+                                    <th className="p-2 border-r w-16 text-center text-blue-800 bg-blue-50">下架數量</th>
+                                    <th className="p-2 border-r w-16 text-center text-indigo-800 bg-indigo-50">建議</th>
+                                    <th className="p-2 w-16 text-center">安庫</th>
+                                    {isEditMode && <th className="p-2 w-8 text-center">刪除</th>}
+                                </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                {group.items.map((item, idx) => {
+                                    const suggested = calculateCookieSuggestedStock(item);
+                                    const diff = suggested - item.safetyStock;
+                                    const hasInput = item.actualSellThroughQty !== '' && item.actualSellThroughQty !== undefined && item.recentPurchaseQty !== '';
+                                    return (
+                                    <tr key={item.id} className={`border-b border-gray-200 hover:bg-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                                        <td className="p-2 border-r font-medium text-gray-700">
+                                            {isEditMode ? (
+                                                <div className="flex flex-col gap-1">
+                                                    <input type="text" className="border border-gray-300 rounded px-1 text-sm w-full" value={item.name} onChange={(e) => updateCookieItem(group.id, item.id, 'name', e.target.value)} />
+                                                    <input type="text" className="border border-gray-300 rounded px-1 text-xs w-full text-gray-500" value={item.spec} onChange={(e) => updateCookieItem(group.id, item.id, 'spec', e.target.value)} />
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col"><span>{item.name}</span><span className="text-[10px] text-gray-400">{item.spec}</span></div>
+                                            )}
+                                        </td>
+                                        <td className="p-1 border-r bg-blue-50/30"><input type="number" className="w-full text-center p-1 bg-transparent outline-none" placeholder="-" value={item.recentPurchaseQty} onChange={(e) => updateCookieItem(group.id, item.id, 'recentPurchaseQty', e.target.value === '' ? '' : Number(e.target.value))} /></td>
+                                        <td className="p-1 border-r bg-blue-50/30"><input type="number" className="w-full text-center p-1 bg-transparent outline-none" placeholder="-" value={item.actualSellThroughQty} onChange={(e) => updateCookieItem(group.id, item.id, 'actualSellThroughQty', e.target.value === '' ? '' : Number(e.target.value))} /></td>
+                                        <td className="p-2 border-r text-center font-bold bg-indigo-50 relative text-gray-600">{hasInput ? suggested : '-'}{hasInput && diff !== 0 && <span className={`absolute top-0 right-0 text-[9px] px-1 ${diff > 0 ? 'text-red-500' : 'text-green-500'}`}>{diff > 0 ? '+' : ''}{diff}</span>}</td>
+                                        <td className="p-1 text-center"><input type="number" className="w-full text-center p-1 border border-gray-200 rounded font-bold" value={item.safetyStock} onChange={(e) => updateCookieItem(group.id, item.id, 'safetyStock', Number(e.target.value))} /></td>
+                                        {isEditMode && (
+                                            <td className="p-1 text-center">
+                                                <button onClick={() => deleteCookieItem(group.id, item.id)} className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
+                                            </td>
+                                        )}
+                                    </tr>
+                                    );
+                                })}
+                                </tbody>
+                            </table>
+                            </div>
+                            {isEditMode && (
+                                <div className="p-2 bg-gray-50 border-t border-gray-200">
+                                    <button onClick={() => addCookieItem(group.id)} className="w-full py-1 text-sm text-indigo-600 hover:bg-indigo-50 border border-dashed border-indigo-300 rounded flex items-center justify-center gap-1">
+                                        <Plus size={14} /> 新增品項
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        ))}
+                    </div>
+                </div>
+              )}
+
+              {/* === CAKE TAB === */}
+              {activeTab === 'cakes' && (
+                <div className="animate-in fade-in duration-300">
+                      <div className="bg-white p-4 rounded-lg shadow-md mb-6 border border-emerald-100 sticky top-2 z-10">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${cakeArrivalType === 'weekday' ? 'bg-emerald-100 border-emerald-300 ring-2 ring-emerald-400' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`} onClick={() => setCakeArrivalType('weekday')}>
+                                <Calendar size={20} className={cakeArrivalType === 'weekday' ? 'text-emerald-600' : 'text-gray-400'} />
+                                <div className="text-center"><span className="block text-sm font-bold text-gray-700">平日到貨 (二~四)</span><span className="text-xs text-gray-500">目標總量: 100</span></div>
+                            </div>
+                            <div className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${cakeArrivalType === 'weekend' ? 'bg-emerald-100 border-emerald-300 ring-2 ring-emerald-400' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`} onClick={() => setCakeArrivalType('weekend')}>
+                                <Calendar size={20} className={cakeArrivalType === 'weekend' ? 'text-emerald-600' : 'text-gray-400'} />
+                                <div className="text-center"><span className="block text-sm font-bold text-gray-700">假日到貨 (五~一)</span><span className="text-xs text-gray-500">目標總量: 170</span></div>
+                            </div>
+                            <div className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${isRaining ? 'bg-blue-100 border-blue-300 ring-2 ring-blue-400' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`} onClick={() => setIsRaining(!isRaining)}>
+                                {isRaining ? <CloudRain size={20} className="text-blue-600" /> : <Sun size={20} className="text-gray-400" />}
+                                <div className="text-center"><span className="block text-sm font-bold text-gray-700">下雨天</span><span className="text-xs text-gray-500">訂貨量 x 0.9</span></div>
+                            </div>
+                            <div className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${isAfter4PM ? 'bg-purple-100 border-purple-300 ring-2 ring-purple-400' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`} onClick={() => setIsAfter4PM(!isAfter4PM)}>
+                                {isAfter4PM ? <Moon size={20} className="text-purple-600" /> : <Clock size={20} className="text-gray-400" />}
+                                <div className="text-center"><span className="block text-sm font-bold text-gray-700">下午4點後</span><span className="text-xs text-gray-500">慕斯 x 0.7</span></div>
+                            </div>
+                        </div>
+
+                        <div className="mb-4">
+                              <div className="bg-indigo-50 px-4 py-3 rounded-lg border border-indigo-200 flex items-center gap-3">
+                                <label className="text-sm font-bold text-indigo-800 flex items-center gap-2"><Filter size={18}/> 叫貨星期：</label>
+                                <select value={orderDay} onChange={(e) => setOrderDay(e.target.value)} className="flex-1 max-w-xs p-2 border border-indigo-300 rounded text-indigo-900 font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                                    {DAY_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                </select>
+                                <span className="text-xs text-indigo-600 hidden md:inline">系統將自動過濾非當日之組別</span>
+                              </div>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row gap-4 items-end">
+                            <div className="flex-1 w-full">
+                                 <div className="bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                                    <label className="text-xs text-gray-500 font-bold flex items-center gap-1 mb-1"><AlertTriangle size={12}/> 節慶倍數 (1.0=無)</label>
+                                    <input type="number" step="0.1" value={holidayMultiplier} onChange={(e) => setHolidayMultiplier(Number(e.target.value))} className="w-full bg-white border border-gray-300 rounded px-2 py-1" />
+                                 </div>
+                            </div>
+                            <button onClick={calculateCakeOrders} className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg shadow-md font-bold flex items-center justify-center gap-2 transition-transform active:scale-95">
+                                <RefreshCw size={20} /> 自動計算分配與調正
+                            </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-6">
+                        {cakeData.map((group) => {
+                            const isActive = orderDay === 'All' || (DAY_GROUP_MAP[orderDay] || []).includes(group.id);
+                            return (
+                                <div key={group.id} className={`bg-white border shadow-sm flex flex-col rounded-xl overflow-hidden transition-all duration-300 ${isActive ? 'border-emerald-100 opacity-100' : 'border-gray-100 opacity-50 grayscale-[0.5]'}`}>
+                                    <div className={`p-3 flex justify-between items-center ${isActive ? 'bg-emerald-50 border-b border-emerald-200' : 'bg-gray-100 border-b border-gray-200'}`}>
+                                        <span className={`font-bold ${isActive ? 'text-emerald-800' : 'text-gray-500'}`}>{group.title}</span>
+                                        {!isActive && <span className="text-xs bg-gray-200 text-gray-500 px-2 py-1 rounded">非今日叫貨</span>}
+                                    </div>
+                                    <div className="overflow-x-auto flex-1">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-gray-50 text-xs text-gray-500 font-bold border-b border-gray-200">
+                                                    <th className="p-3">品項名稱</th>
+                                                    <th className="p-2 w-20 text-center text-gray-600 bg-gray-100">倍數設定</th>
+                                                    <th className="p-2 w-20 text-center text-blue-600 bg-blue-50">進貨量</th>
+                                                    <th className="p-2 w-20 text-center text-blue-600 bg-blue-50">下架數量</th>
+                                                    <th className="p-2 w-20 text-center text-green-600 bg-green-50">現場數量</th>
+                                                    <th className={`p-2 w-24 text-center text-white ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`}>建議下單</th>
+                                                    {isEditMode && <th className="p-2 w-8 text-center">刪除</th>}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="text-sm">
+                                                {group.items.map((item, idx) => (
+                                                    <tr key={item.id} className={`border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                                                        <td className="p-3 font-medium text-gray-700">
+                                                            {isEditMode ? (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <input type="text" className="border border-gray-300 rounded px-1 text-sm w-full" value={item.name} onChange={(e) => updateCakeItem(group.id, item.id, 'name', e.target.value)} />
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className="text-[10px] text-gray-400">Max:</span>
+                                                                        <input type="number" className="border border-gray-300 rounded px-1 text-xs w-12" value={item.maxQty} onChange={(e) => updateCakeItem(group.id, item.id, 'maxQty', Number(e.target.value))} />
+                                                                    </div>
+                                                                </div>
+                                                            ) : item.name}
+                                                        </td>
+                                                        <td className="p-2 text-center">
+                                                            <input type="number" className="w-full text-center p-1 border border-gray-200 rounded text-gray-500 text-xs" value={item.manualMultiplier} onChange={(e) => updateCakeItem(group.id, item.id, 'manualMultiplier', Number(e.target.value))} />
+                                                        </td>
+                                                        <td className="p-2 bg-blue-50/10">
+                                                            <input type="number" className="w-full text-center p-1 border border-blue-200 rounded text-blue-800 bg-white focus:ring-2 focus:ring-blue-300 outline-none" placeholder="-" value={item.lastPurchaseQty} onChange={(e) => updateCakeItem(group.id, item.id, 'lastPurchaseQty', e.target.value === '' ? '' : Number(e.target.value))} />
+                                                        </td>
+                                                        <td className="p-2 bg-blue-50/10">
+                                                            <input type="number" className="w-full text-center p-1 border border-blue-200 rounded text-blue-800 bg-white focus:ring-2 focus:ring-blue-300 outline-none" placeholder="-" value={item.sellThroughQty} onChange={(e) => updateCakeItem(group.id, item.id, 'sellThroughQty', e.target.value === '' ? '' : Number(e.target.value))} />
+                                                        </td>
+                                                        <td className="p-2 bg-green-50/20">
+                                                            <input type="number" className="w-full text-center p-1 border border-green-200 rounded text-green-800 bg-white focus:ring-2 focus:ring-green-300 outline-none" placeholder="-" value={item.currentStock} onChange={(e) => updateCakeItem(group.id, item.id, 'currentStock', e.target.value === '' ? '' : Number(e.target.value))} />
+                                                        </td>
+                                                        <td className={`p-2 text-center ${isActive ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+                                                            <span className={`text-lg font-bold block ${isActive ? 'text-emerald-600' : 'text-gray-300'}`}>{item.suggestedOrder}</span>
+                                                        </td>
+                                                        {isEditMode && (
+                                                            <td className="p-1 text-center">
+                                                                <button onClick={() => deleteCakeItem(group.id, item.id)} className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
+                                                            </td>
+                                                        )}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {isEditMode && (
+                                        <div className="p-2 bg-gray-50 border-t border-gray-200">
+                                            <button onClick={() => addCakeItem(group.id, group.items[0]?.scheduleId || 'Group4')} className="w-full py-1 text-sm text-emerald-600 hover:bg-emerald-50 border border-dashed border-emerald-300 rounded flex items-center justify-center gap-1">
+                                                <Plus size={14} /> 新增品項
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                      </div>
+                </div>
+              )}
+
+              {/* === BREAD TAB === */}
+              {activeTab === 'bread' && (
+                <div className="animate-in fade-in duration-300">
+                    <div className="bg-white p-6 rounded-lg shadow-md mb-6 border border-amber-200 sticky top-2 z-10">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                            <div className="flex flex-col gap-2">
+                                 <label className="text-sm font-bold text-gray-700 flex items-center gap-1"><DollarSign size={16} /> 今日下單金額</label>
+                                 <input type="number" value={breadOrderAmount} onChange={(e) => setBreadOrderAmount(e.target.value === '' ? '' : Number(e.target.value))} className="w-full border border-gray-300 rounded-lg p-2 text-lg font-bold text-gray-800 focus:ring-2 focus:ring-amber-500 outline-none" placeholder="ex: 8000" />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                 <label className="text-sm font-bold text-gray-700 flex items-center gap-1"><Percent size={16} /> 前三週平均下架率</label>
+                                 <div className="relative">
+                                    <input type="number" value={breadAverageRate} onChange={(e) => setBreadAverageRate(e.target.value === '' ? '' : Number(e.target.value))} className="w-full border border-gray-300 rounded-lg p-2 text-lg font-bold text-gray-800 focus:ring-2 focus:ring-amber-500 outline-none pr-8" placeholder="ex: 2.5" />
+                                    <span className="absolute right-3 top-2.5 text-gray-500 font-bold">%</span>
+                                 </div>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                 <label className="text-sm font-bold text-gray-700 flex items-center gap-1"><TrendingUp size={16} /> 前三天平均下架率</label>
+                                 <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <input type="number" value={breadRecentRate} onChange={(e) => setBreadRecentRate(e.target.value === '' ? '' : Number(e.target.value))} className="w-full border border-gray-300 rounded-lg p-2 text-lg font-bold text-gray-800 focus:ring-2 focus:ring-amber-500 outline-none pr-8" placeholder="ex: 2.0" />
+                                        <span className="absolute right-3 top-2.5 text-gray-500 font-bold">%</span>
+                                    </div>
+                                    <button onClick={() => setIsBreadHoliday(!isBreadHoliday)} className={`px-3 rounded-lg border font-bold text-sm transition-all ${isBreadHoliday ? 'bg-red-100 border-red-300 text-red-600' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                        {isBreadHoliday ? '假日' : '平日'}
+                                    </button>
+                                 </div>
+                            </div>
+                            <button onClick={calculateBreadOrders} className="w-full bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg shadow-md font-bold flex items-center justify-center gap-2 transition-transform active:scale-95 h-[46px]">
+                                <Calculator size={20} /> 計算並分配數量
+                            </button>
+                        </div>
+                        {calculatedBreadTarget !== null && (
+                            <div className="mt-4 pt-4 border-t border-amber-100 flex justify-between items-center animate-in fade-in slide-in-from-top-2">
+                                 <div className="text-amber-800">
+                                    <span className="text-sm font-medium">系統計算結果：</span>
+                                    <span className="text-xs text-amber-600 ml-2">(金額 + 2%緩衝) ± 加減碼 ± 隨機浮動</span>
+                                 </div>
+                                 <div className="text-2xl font-bold text-amber-600 bg-amber-50 px-4 py-1 rounded-lg border border-amber-200">${calculatedBreadTarget.toLocaleString()}</div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden">
+                        <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                            <h3 className="font-bold text-gray-700">麵包品項列表與配單建議</h3>
+                            <div className="flex gap-2">
+                                 <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">昨日下架越多，建議量越少</span>
+                                 <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">{isBreadHoliday ? '使用假日基準' : '使用平日基準'}</span>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-100 text-xs text-gray-600 font-bold border-b border-gray-300">
+                                        <th className="p-3 text-left">品項名稱</th>
+                                        <th className="p-3 w-24 text-center">單價</th>
+                                        <th className="p-3 w-32 text-center bg-blue-50 text-blue-800">基準量 (平/假)</th>
+                                        <th className="p-3 w-28 text-center bg-red-50 text-red-800">昨日下架</th>
+                                        <th className="p-3 w-32 text-center bg-amber-50 text-amber-800 text-sm">建議進貨(個)</th>
+                                        {isEditMode && <th className="p-3 w-16 text-center">操作</th>}
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {breadData.filter(item => isBreadHoliday || !item.isHolidayOnly).map((item, idx) => (
+                                        <tr key={item.id} className={`border-b border-gray-100 hover:bg-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                                            <td className="p-3 font-medium text-gray-700">
+                                                {isEditMode ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <input type="text" className="border border-gray-300 rounded px-2 py-1 w-full" value={item.name} onChange={(e) => updateBreadItem(item.id, 'name', e.target.value)} />
+                                                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                            <label className="text-xs flex items-center gap-1 text-gray-500 cursor-pointer">
+                                                                <input type="checkbox" checked={item.isHolidayOnly || false} onChange={(e) => updateBreadItem(item.id, 'isHolidayOnly', e.target.checked)} /> 假日限定
+                                                            </label>
+                                                            <label className="text-xs flex items-center gap-1 text-pink-600 cursor-pointer">
+                                                                <input type="checkbox" checked={item.isSeasonal || false} onChange={(e) => updateBreadItem(item.id, 'isSeasonal', e.target.checked)} /> 季節限定
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col">
+                                                        <span>{item.name}</span>
+                                                        <div className="flex gap-1">
+                                                            {item.isHolidayOnly && <span className="text-[10px] text-red-500 bg-red-50 px-1 rounded w-fit">假日限定</span>}
+                                                            {item.isSeasonal && <span className="text-[10px] text-pink-500 bg-pink-50 px-1 rounded w-fit flex items-center gap-0.5"><Leaf size={8}/>季節限定</span>}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="p-3 text-center text-gray-500">
+                                                {isEditMode ? <input type="number" className="border border-gray-300 rounded px-1 py-1 w-full text-center" value={item.price} onChange={(e) => updateBreadItem(item.id, 'price', Number(e.target.value))} /> : `$${item.price}`}
+                                            </td>
+                                            <td className="p-3 text-center bg-blue-50/30">
+                                                {isEditMode ? (
+                                                    <div className="flex gap-1">
+                                                        <input type="number" className="w-1/2 text-center bg-white border border-gray-300 rounded text-xs" placeholder="平" value={item.baseQtyWeekday} onChange={(e) => updateBreadItem(item.id, 'baseQtyWeekday', Number(e.target.value))} />
+                                                        <input type="number" className="w-1/2 text-center bg-red-50 border border-red-200 rounded text-xs" placeholder="假" value={item.baseQtyHoliday} onChange={(e) => updateBreadItem(item.id, 'baseQtyHoliday', Number(e.target.value))} />
+                                                    </div>
+                                                ) : (
+                                                    <span className="font-medium text-blue-700">
+                                                        {isBreadHoliday ? item.baseQtyHoliday : item.baseQtyWeekday}
+                                                        <span className="text-gray-400 text-xs ml-1">({item.baseQtyWeekday}/{item.baseQtyHoliday})</span>
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="p-3 text-center bg-red-50/30">
+                                                <input type="number" className="w-full text-center bg-white border border-red-100 rounded outline-none font-medium text-red-700 focus:ring-1 focus:ring-red-300" placeholder="-" value={item.yesterdayUnsold} onChange={(e) => updateBreadItem(item.id, 'yesterdayUnsold', e.target.value === '' ? '' : Number(e.target.value))} />
+                                            </td>
+                                            <td className="p-3 text-center bg-amber-50/50">
+                                                <span className="text-lg font-bold text-amber-600">{item.suggestedQty > 0 ? item.suggestedQty : '-'}</span>
+                                            </td>
+                                            {isEditMode && (
+                                                <td className="p-3 text-center">
+                                                    <button onClick={() => deleteBreadItem(item.id)} className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        {isEditMode && (
+                            <div className="p-3 bg-gray-50 border-t border-gray-200">
+                                <button onClick={addBreadItem} className="w-full py-2 text-sm text-amber-600 hover:bg-amber-50 border border-dashed border-amber-300 rounded flex items-center justify-center gap-1">
+                                    <Plus size={16} /> 新增麵包品項
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+              )}
+
+              <div className="mt-12 text-center text-gray-400 text-sm pb-8 border-t pt-4">
+                &copy; 2025 歐樂沃城堡 | {lastSaved ? `上次存檔: ${lastSaved}` : '系統已就緒'}
+              </div>
+
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<InventorySystem />);
+    </script>
+</body>
+</html>
