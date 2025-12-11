@@ -2,8 +2,18 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>歐樂沃城堡 - 智慧庫存管理系統</title>
+    
+    <!-- PWA / Mobile App 相關設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#ffffff">
+    
+    <!-- 圖示設定 (加入主畫面時顯示) -->
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/632Hw4rR/LOGO.png">
+    <link rel="icon" href="https://i.postimg.cc/632Hw4rR/LOGO.png">
     
     <!-- 引入 React 和 ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -17,13 +27,24 @@
 
     <!-- 定義樣式修正 -->
     <style>
-        body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; background-color: #f3f4f6; }
+        body { 
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
+            background-color: #f3f4f6; 
+            /* 防止 iOS 回彈效果，讓它更像 App */
+            overscroll-behavior-y: none;
+        }
         /* 隱藏滾動條但在內容溢出時允許滾動 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 針對 iOS 安全區域的修正 */
+        .safe-area-padding {
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
     </style>
 </head>
-<body>
+<body class="safe-area-padding">
     <div id="root"></div>
 
     <script type="text/babel" data-presets="typescript,react">
@@ -638,9 +659,13 @@
 
               <header className={`mb-6 p-4 rounded-lg shadow-sm border-l-4 ${activeTab === 'cookies' ? 'bg-white border-indigo-600' : activeTab === 'cakes' ? 'bg-emerald-50 border-emerald-600' : 'bg-amber-50 border-amber-600'}`}>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
-                    <h1 className="text-xl md:text-2xl font-bold text-gray-900">{activeTab === 'cookies' ? '手工餅乾 智慧安庫管理系統' : activeTab === 'cakes' ? '慕斯小蛋糕 自動化建議下單' : '麵包部門 智慧預算配單系統'}</h1>
-                    <p className="text-sm text-gray-500 mt-1">{activeTab === 'cookies' ? '自動化庫存校正模組 | 輸入進貨量與下架數量以優化庫存' : activeTab === 'cakes' ? '智慧分配模組 | 根據到貨日總量自動計算建議訂購量' : '預算分配模組 | 根據下架率自動計算進貨總金額並分配數量'}</p>
+                  <div className="flex items-center gap-4">
+                      {/* Logo 置入 */}
+                      <img src="https://i.postimg.cc/632Hw4rR/LOGO.png" alt="歐樂沃城堡 Logo" className="w-16 h-16 object-contain bg-white rounded-full shadow-sm p-1 border border-gray-100" />
+                      <div>
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-900">{activeTab === 'cookies' ? '手工餅乾 智慧安庫管理系統' : activeTab === 'cakes' ? '慕斯小蛋糕 自動化建議下單' : '麵包部門 智慧預算配單系統'}</h1>
+                        <p className="text-sm text-gray-500 mt-1">{activeTab === 'cookies' ? '自動化庫存校正模組 | 輸入進貨量與下架數量以優化庫存' : activeTab === 'cakes' ? '智慧分配模組 | 根據到貨日總量自動計算建議訂購量' : '預算分配模組 | 根據下架率自動計算進貨總金額並分配數量'}</p>
+                      </div>
                   </div>
                   <div className="flex items-center gap-3">
                       <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2 rounded-full transition-colors ${isEditMode ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400 hover:text-gray-600'}`} title={isEditMode ? "結束編輯模式" : "進入編輯模式"}>{isEditMode ? <Unlock size={20} /> : <Lock size={20} />}</button>
