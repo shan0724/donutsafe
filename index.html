@@ -19,31 +19,53 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- 引入 Babel 用於解析 JSX (含 TypeScript 支援) -->
+    <!-- 引入 Babel (改用 React preset，移除 TypeScript 以加速手機解析) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- 引入 Tailwind CSS 用於樣式 -->
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- 定義樣式修正 -->
     <style>
         body { 
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
             background-color: #f3f4f6; 
-            overscroll-behavior-y: none;
+            overscroll-behavior-y: none; /* 防止 iOS 橡皮筋效果 */
+            -webkit-tap-highlight-color: transparent; /* 移除點擊高亮 */
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* iOS 安全區域修正 */
         .safe-area-padding {
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
         }
+
+        /* 載入動畫 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .loading-text {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
     </style>
 </head>
 <body class="safe-area-padding">
-    <div id="root"></div>
+    <!-- 預設顯示載入中，React 啟動後會取代此內容 -->
+    <div id="root" class="min-h-screen flex flex-col items-center justify-center text-gray-500 bg-gray-100">
+        <div class="mb-4">
+            <svg class="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+        <div class="loading-text font-bold text-lg">系統載入中...</div>
+        <div class="text-sm mt-2 text-gray-400">若長時間無反應，請檢查網路連線</div>
+    </div>
 
-    <script type="text/babel" data-presets="typescript,react">
+    <!-- 移除 typescript preset，僅保留 react，大幅減少手機解析負擔 -->
+    <script type="text/babel" data-presets="react">
         const { useState, useEffect } = React;
 
         // --- ICON 元件 ---
@@ -76,12 +98,9 @@
         const Percent = (p) => <IconBase {...p}><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></IconBase>;
         const ArrowDownCircle = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></IconBase>;
         const Leaf = (p) => <IconBase {...p}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></IconBase>;
+        const Download = (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></IconBase>;
 
-        // --- 型別定義與常數 ---
-        // (這些介面僅供參考，Babel 會在執行時移除)
-        // type ScheduleType = ...
-        // interface CookieProduct ...
-
+        // --- 初始資料 (移除 TypeScript Type 定義以加速解析) ---
         const INITIAL_COOKIE_DATA = [
           { id: 'Mon_Fri', title: '星期一下單，星期五到貨', items: [
               { id: 'p1', name: 'OREO舒芙蕾圓餅', spec: '最低量5盒以上', moq: 5, isMultiplier: false, safetyStock: 20, recentPurchaseQty: '', actualSellThroughQty: '' },
@@ -160,27 +179,27 @@
         ];
 
         const INITIAL_BREAD_DATA = [
-          { id: 'b8', name: '焦糖奶油手撕包', price: 100, baseQtyWeekday: 20, baseQtyHoliday: 60, yesterdayUnsold: '', suggestedQty: 0 }, 
-          { id: 'b7', name: '酒釀桂圓', price: 76, baseQtyWeekday: 15, baseQtyHoliday: 42, yesterdayUnsold: '', suggestedQty: 0 }, 
-          { id: 'b12', name: '香蒜巴西里', price: 52, baseQtyWeekday: 12, baseQtyHoliday: 38, yesterdayUnsold: '', suggestedQty: 0 }, 
-          { id: 'b9', name: '岩鹽可頌', price: 36, baseQtyWeekday: 18, baseQtyHoliday: 32, yesterdayUnsold: '', suggestedQty: 0 }, 
-          { id: 'b10', name: '玫瑰乳酪', price: 40, baseQtyWeekday: 12, baseQtyHoliday: 24, yesterdayUnsold: '', suggestedQty: 0 }, 
-          { id: 'b6', name: '巧克力法圈', price: 42, baseQtyWeekday: 10, baseQtyHoliday: 20, yesterdayUnsold: '', suggestedQty: 0 }, 
-          { id: 'b4', name: '丹麥菠蘿', price: 45, baseQtyWeekday: 5, baseQtyHoliday: 18, yesterdayUnsold: '', suggestedQty: 0 },
-          { id: 'b5', name: '丹麥奶酥菠蘿', price: 47, baseQtyWeekday: 6, baseQtyHoliday: 18, yesterdayUnsold: '', suggestedQty: 0 },
-          { id: 'b15', name: '燻雞沙拉', price: 85, baseQtyWeekday: 5, baseQtyHoliday: 20, yesterdayUnsold: '', suggestedQty: 0 },
-          { id: 'b2', name: '蒜味羅宋(3入)', price: 150, baseQtyWeekday: 6, baseQtyHoliday: 14, yesterdayUnsold: '', suggestedQty: 0 },
-          { id: 'b3', name: '起士羅宋(3入)', price: 150, baseQtyWeekday: 6, baseQtyHoliday: 14, yesterdayUnsold: '', suggestedQty: 0 },
-          { id: 'b14', name: '鮪魚三明治', price: 60, baseQtyWeekday: 3, baseQtyHoliday: 10, yesterdayUnsold: '', suggestedQty: 0 },
-          { id: 'b13', name: '活力草莓三明治', price: 35, baseQtyWeekday: 3, baseQtyHoliday: 8, yesterdayUnsold: '', suggestedQty: 0 }, 
-          { id: 'b11_4', name: '大理石餐包(4入)', price: 72, baseQtyWeekday: 3, baseQtyHoliday: 8, yesterdayUnsold: '', suggestedQty: 0 },
+          { id: 'b8', name: '焦糖奶油手撕包', price: 100, baseQtyWeekday: 20, baseQtyHoliday: 60, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 }, 
+          { id: 'b7', name: '酒釀桂圓', price: 76, baseQtyWeekday: 15, baseQtyHoliday: 42, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 }, 
+          { id: 'b12', name: '香蒜巴西里', price: 52, baseQtyWeekday: 12, baseQtyHoliday: 38, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 }, 
+          { id: 'b9', name: '岩鹽可頌', price: 36, baseQtyWeekday: 18, baseQtyHoliday: 32, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 }, 
+          { id: 'b10', name: '玫瑰乳酪', price: 40, baseQtyWeekday: 12, baseQtyHoliday: 24, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 }, 
+          { id: 'b6', name: '巧克力法圈', price: 42, baseQtyWeekday: 10, baseQtyHoliday: 20, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 }, 
+          { id: 'b4', name: '丹麥菠蘿', price: 45, baseQtyWeekday: 5, baseQtyHoliday: 18, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 },
+          { id: 'b5', name: '丹麥奶酥菠蘿', price: 47, baseQtyWeekday: 6, baseQtyHoliday: 18, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 },
+          { id: 'b15', name: '燻雞沙拉', price: 85, baseQtyWeekday: 5, baseQtyHoliday: 20, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 },
+          { id: 'b2', name: '蒜味羅宋(3入)', price: 150, baseQtyWeekday: 6, baseQtyHoliday: 14, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 },
+          { id: 'b3', name: '起士羅宋(3入)', price: 150, baseQtyWeekday: 6, baseQtyHoliday: 14, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 },
+          { id: 'b14', name: '鮪魚三明治', price: 60, baseQtyWeekday: 3, baseQtyHoliday: 10, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 },
+          { id: 'b13', name: '活力草莓三明治', price: 35, baseQtyWeekday: 3, baseQtyHoliday: 8, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 }, 
+          { id: 'b11_4', name: '大理石餐包(4入)', price: 72, baseQtyWeekday: 3, baseQtyHoliday: 8, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 },
           // 假日限定區
-          { id: 'b1', name: '大布莉(6入)', price: 168, baseQtyWeekday: 0, baseQtyHoliday: 8, isHolidayOnly: true, yesterdayUnsold: '', suggestedQty: 0 }, 
-          { id: 'b16', name: '城堡洋蔥吐司', price: 135, baseQtyWeekday: 0, baseQtyHoliday: 5, isHolidayOnly: true, yesterdayUnsold: '', suggestedQty: 0 }, 
-          { id: 'b17', name: '城堡巧克力餐包(6入)', price: 150, baseQtyWeekday: 0, baseQtyHoliday: 6, isHolidayOnly: true, yesterdayUnsold: '', suggestedQty: 0 },
+          { id: 'b1', name: '大布莉(6入)', price: 168, baseQtyWeekday: 0, baseQtyHoliday: 8, isHolidayOnly: true, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 }, 
+          { id: 'b16', name: '城堡洋蔥吐司', price: 135, baseQtyWeekday: 0, baseQtyHoliday: 5, isHolidayOnly: true, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 }, 
+          { id: 'b17', name: '城堡巧克力餐包(6入)', price: 150, baseQtyWeekday: 0, baseQtyHoliday: 6, isHolidayOnly: true, yesterdayUnsold: '', currentStock: '', suggestedQty: 0 },
         ];
 
-        const STORAGE_KEY = 'inventory_system_data_v22_offline';
+        const STORAGE_KEY = 'inventory_system_data_v23_offline';
 
         const DAY_GROUP_MAP = {
           'Mon': ['Group1', 'Group4'],
@@ -228,6 +247,7 @@
         const Modal = ({ isOpen, title, content, onConfirm, onCancel, confirmText = "確定", cancelText = "取消", type = 'info', action }) => {
           if (!isOpen) return null;
 
+          // Helper to handle the confirm action
           const handleConfirm = () => {
               if (action) {
                   action();
@@ -267,7 +287,6 @@
           const [cakeData, setCakeData] = useState(INITIAL_CAKE_DATA);
           const [breadData, setBreadData] = useState(INITIAL_BREAD_DATA);
           
-          // 預設 96%
           const [targetSellThroughRate, setTargetSellThroughRate] = useState(96);
           const [cakeArrivalType, setCakeArrivalType] = useState('weekday'); 
           const [isRaining, setIsRaining] = useState(false);
@@ -299,13 +318,7 @@
                 if (parsed.cakeData) setCakeData(parsed.cakeData);
                 if (parsed.breadData) setBreadData(parsed.breadData);
                 if (parsed.settings) {
-                    // 自動遷移邏輯：若為舊的 85，強制更新為 96
-                    if (parsed.settings.targetSellThroughRate === 85 || parsed.settings.targetSellThroughRate === undefined) {
-                         setTargetSellThroughRate(96);
-                    } else {
-                        setTargetSellThroughRate(parsed.settings.targetSellThroughRate);
-                    }
-                    
+                    if (parsed.settings.targetSellThroughRate) setTargetSellThroughRate(parsed.settings.targetSellThroughRate);
                     if (parsed.settings.breadOrderAmount) setBreadOrderAmount(parsed.settings.breadOrderAmount);
                 }
                 const now = new Date();
@@ -316,22 +329,18 @@
             }
           }, []);
 
-          // Cake Summary Logic
+          // 修改 useEffect：當 cakeData 變動時，分別計算現場與進貨總量
           useEffect(() => {
             let current = 0;
             let purchase = 0;
-            if (Array.isArray(cakeData)) {
-                cakeData.forEach(group => {
-                    if (Array.isArray(group.items)) {
-                        group.items.forEach(item => {
-                            const stock = item.currentStock !== '' ? Number(item.currentStock) : 0;
-                            const buy = item.lastPurchaseQty !== '' ? Number(item.lastPurchaseQty) : 0;
-                            current += stock;
-                            purchase += buy;
-                        });
-                    }
+            cakeData.forEach(group => {
+                group.items.forEach(item => {
+                    const stock = item.currentStock !== '' ? Number(item.currentStock) : 0;
+                    const buy = item.lastPurchaseQty !== '' ? Number(item.lastPurchaseQty) : 0;
+                    current += stock;
+                    purchase += buy;
                 });
-            }
+            });
             setCakeStockSummary({ current, purchase, total: current + purchase });
           }, [cakeData]);
 
@@ -357,6 +366,47 @@
             }
           };
 
+          const handleExportCSV = () => {
+              let csvContent = "\uFEFF"; // BOM for UTF-8 compatibility with Excel
+              let filename = "";
+              const dateStr = new Date().toISOString().slice(0, 10);
+
+              if (activeTab === 'cookies') {
+                  filename = `手工餅乾庫存_${dateStr}.csv`;
+                  csvContent += "群組,品名,規格,最少訂購量,安全庫存,進貨量,銷售數量,建議安庫量\n";
+                  cookieData.forEach(group => {
+                      group.items.forEach(item => {
+                          const suggested = calculateCookieSuggestedStock(item);
+                          csvContent += `${group.title},${item.name},${item.spec},${item.moq},${item.safetyStock},${item.recentPurchaseQty},${item.actualSellThroughQty},${suggested}\n`;
+                      });
+                  });
+              } else if (activeTab === 'cakes') {
+                  filename = `慕斯蛋糕下單_${dateStr}.csv`;
+                  csvContent += "群組,品名,類型,倍數設定,最大量,進貨量,下架數量,現場庫存,建議下單\n";
+                  cakeData.forEach(group => {
+                      group.items.forEach(item => {
+                           csvContent += `${group.title},${item.name},${item.type},${item.manualMultiplier},${item.maxQty},${item.lastPurchaseQty},${item.sellThroughQty},${item.currentStock},${item.suggestedOrder}\n`;
+                      });
+                  });
+              } else if (activeTab === 'bread') {
+                  filename = `麵包配單_${dateStr}.csv`;
+                  csvContent += "品名,單價,平日基準,假日基準,昨日下架,目前庫存,建議進貨,假日限定,季節限定\n";
+                  breadData.forEach(item => {
+                      csvContent += `${item.name},${item.price},${item.baseQtyWeekday},${item.baseQtyHoliday},${item.yesterdayUnsold},${item.currentStock},${item.suggestedQty},${item.isHolidayOnly ? '是' : '否'},${item.isSeasonal ? '是' : '否'}\n`;
+                  });
+              }
+
+              const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.setAttribute("href", url);
+              link.setAttribute("download", filename);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              showToast(`已匯出 ${filename}`, 'success');
+          };
+
           const handleResetRequest = () => {
             setModal({
               isOpen: true,
@@ -376,7 +426,6 @@
             setCookieData(INITIAL_COOKIE_DATA);
             setCakeData(INITIAL_CAKE_DATA);
             setBreadData(INITIAL_BREAD_DATA);
-            setTargetSellThroughRate(96); 
             localStorage.removeItem(STORAGE_KEY);
             setLastSaved(null);
             setModal(prev => ({ ...prev, isOpen: false }));
@@ -387,26 +436,19 @@
           const calculateCookieSuggestedStock = (item) => {
             if (item.recentPurchaseQty === '' || item.recentPurchaseQty === 0 || 
                 item.actualSellThroughQty === '' || item.actualSellThroughQty === undefined) {
-                return Number(item.safetyStock); // Ensure number
+                return item.safetyStock;
             }
             const purchase = Number(item.recentPurchaseQty);
             const sold = Number(item.actualSellThroughQty);
-            
-            // 安全檢查：若進貨為 0，避免除以零
-            if (purchase === 0) return Number(item.safetyStock);
-
             const actualRate = (sold / purchase) * 100;
-            const currentSafetyStock = Number(item.safetyStock);
 
-            // 4% 容許範圍邏輯
-            // 將 targetSellThroughRate 強制轉為數字比較
-            if (Math.abs(actualRate - Number(targetSellThroughRate)) <= 4) {
-                return currentSafetyStock;
+            if (Math.abs(actualRate - targetSellThroughRate) <= 4) {
+                return item.safetyStock;
             }
 
-            const rateDiff = (actualRate - Number(targetSellThroughRate)) / 100;
+            const rateDiff = (actualRate - targetSellThroughRate) / 100;
             const clampedDiff = Math.max(-0.5, Math.min(0.5, rateDiff));
-            const newStock = Math.round(currentSafetyStock * (1 + clampedDiff));
+            const newStock = Math.round(item.safetyStock * (1 + clampedDiff));
             return newStock > 0 ? newStock : 0;
           };
 
@@ -591,7 +633,7 @@
             setCakeData(newData);
             
             const resultMsg = `計算完成：目標 ${Math.round(effectiveTotalTarget)} - 庫存 ${totalCurrentStock} - 進貨 ${totalPurchaseQty} = 分配額度 ${Math.round(netOrderPool)}`;
-            setCakeCalculationResult(resultMsg);
+            setCakeCalculationResult(resultMsg); 
             showToast(resultMsg, 'success');
           };
 
@@ -611,6 +653,7 @@
               baseQtyHoliday: 0,
               suggestedQty: 0,
               yesterdayUnsold: '',
+              currentStock: '',
               isHolidayOnly: false
             };
             setBreadData(prev => [...prev, newItem]);
@@ -669,14 +712,24 @@
                   showToast('無法分配：請設定麵包單價與基準量，或檢查有效品項', 'error');
                   return;
               }
+              
               const ratio = targetAmount / totalEffectiveValue;
+              
               const newBreadData = breadData.map(item => {
                   const activeItem = itemsWithEffectiveQty.find(ai => ai.id === item.id);
                   if (!activeItem) return { ...item, suggestedQty: 0 };
-                  return { ...item, suggestedQty: Math.round(activeItem.effectiveQty * ratio) };
+                  
+                  let calculatedSuggestion = Math.round(activeItem.effectiveQty * ratio);
+                  
+                  const stock = item.currentStock !== '' ? Number(item.currentStock) : 0;
+                  let finalSuggestion = calculatedSuggestion - stock;
+                  
+                  if (finalSuggestion < 0) finalSuggestion = 0;
+
+                  return { ...item, suggestedQty: finalSuggestion };
               });
               setBreadData(newBreadData);
-              showToast(`計算完成！目標金額 $${targetAmount}`, 'success');
+              showToast(`計算完成！目標金額 $${targetAmount} (已扣除庫存)`, 'success');
           };
 
           return (
@@ -685,15 +738,14 @@
               <Modal isOpen={modal.isOpen} title={modal.title} content={modal.content} type={modal.type} action={modal.action} onCancel={() => setModal(prev => ({ ...prev, isOpen: false }))} />
               
               <div className="bg-white rounded-lg shadow-sm mb-4 p-2 flex gap-2 overflow-x-auto">
-                 <button onClick={() => setActiveTab('cookies')} className={`flex-1 py-3 px-4 rounded-md font-bold text-lg transition-all ${activeTab === 'cookies' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>手工餅乾庫存</button>
-                 <button onClick={() => setActiveTab('cakes')} className={`flex-1 py-3 px-4 rounded-md font-bold text-lg transition-all ${activeTab === 'cakes' ? 'bg-emerald-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>慕斯小蛋糕下單</button>
-                 <button onClick={() => setActiveTab('bread')} className={`flex-1 py-3 px-4 rounded-md font-bold text-lg transition-all ${activeTab === 'bread' ? 'bg-amber-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>麵包自動配單</button>
+                  <button onClick={() => setActiveTab('cookies')} className={`flex-1 py-3 px-4 rounded-md font-bold text-lg transition-all ${activeTab === 'cookies' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>手工餅乾庫存</button>
+                  <button onClick={() => setActiveTab('cakes')} className={`flex-1 py-3 px-4 rounded-md font-bold text-lg transition-all ${activeTab === 'cakes' ? 'bg-emerald-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>慕斯小蛋糕下單</button>
+                  <button onClick={() => setActiveTab('bread')} className={`flex-1 py-3 px-4 rounded-md font-bold text-lg transition-all ${activeTab === 'bread' ? 'bg-amber-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>麵包自動配單</button>
               </div>
 
               <header className={`mb-6 p-4 rounded-lg shadow-sm border-l-4 ${activeTab === 'cookies' ? 'bg-white border-indigo-600' : activeTab === 'cakes' ? 'bg-emerald-50 border-emerald-600' : 'bg-amber-50 border-amber-600'}`}>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="flex items-center gap-4">
-                      {/* Logo 置入 */}
                       <img src="https://i.postimg.cc/632Hw4rR/LOGO.png" alt="歐樂沃城堡 Logo" className="w-16 h-16 object-contain bg-white rounded-full shadow-sm p-1 border border-gray-100" />
                       <div>
                         <h1 className="text-xl md:text-2xl font-bold text-gray-900">{activeTab === 'cookies' ? '手工餅乾 智慧安庫管理系統' : activeTab === 'cakes' ? '慕斯小蛋糕 自動化建議下單' : '麵包部門 智慧預算配單系統'}</h1>
@@ -704,6 +756,7 @@
                       <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2 rounded-full transition-colors ${isEditMode ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400 hover:text-gray-600'}`} title={isEditMode ? "結束編輯模式" : "進入編輯模式"}>{isEditMode ? <Unlock size={20} /> : <Lock size={20} />}</button>
                       <div className="h-8 w-px bg-gray-300 mx-1"></div>
                       <button onClick={handleResetRequest} className="text-gray-400 hover:text-red-500 p-2 transition-colors rounded-full hover:bg-red-50" title="重置全部資料"><RotateCcw size={18} /></button>
+                      <button onClick={handleExportCSV} className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-md transition-colors flex items-center gap-2 shadow-sm font-medium" title="匯出當前分頁資料為 CSV"><Download size={18} /> 匯出 CSV</button>
                       <button onClick={handleSave} className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2 rounded-md transition-colors flex items-center gap-2 shadow-sm font-medium"><Save size={18} /> 存檔</button>
                   </div>
                 </div>
@@ -732,8 +785,7 @@
                             <RefreshCw size={18} /> 應用建議值
                         </button>
                     </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                         {cookieData.map((group) => (
                         <div key={group.id} className="bg-white border border-gray-300 shadow-sm flex flex-col rounded-md overflow-hidden h-full">
                             <div className="bg-gray-50 border-b border-gray-300 p-3"><span className="font-bold text-gray-700 text-sm">{group.title}</span></div>
@@ -743,7 +795,6 @@
                                 <tr className="bg-gray-100 text-xs text-gray-600 font-semibold border-b border-gray-300">
                                     <th className="p-2 border-r min-w-[100px]">品名</th>
                                     <th className="p-2 border-r w-16 text-center text-blue-800 bg-blue-50">進貨量</th>
-                                    {/* 修改欄位名稱：將「下架數量」改為「銷售數量」以避免與過期混淆 */}
                                     <th className="p-2 border-r w-16 text-center text-blue-800 bg-blue-50">銷售數量</th>
                                     <th className="p-2 border-r w-16 text-center text-indigo-800 bg-indigo-50">建議</th>
                                     <th className="p-2 w-16 text-center">安庫</th>
@@ -772,7 +823,6 @@
                                         <td className="p-2 border-r text-center font-bold bg-indigo-50 relative text-gray-600">
                                             {hasInput ? suggested : '-'}
                                             {hasInput && diff !== 0 && <span className={`absolute top-0 right-0 text-[9px] px-1 ${diff > 0 ? 'text-red-500' : 'text-green-500'}`}>{diff > 0 ? '+' : ''}{diff}</span>}
-                                            {/* 新增顯示：當有輸入數據且建議值沒有變動時，顯示「維持」 */}
                                             {hasInput && diff === 0 && <span className="absolute top-0 right-0 text-[9px] px-1 text-gray-400">維持</span>}
                                         </td>
                                         <td className="p-1 text-center"><input type="number" className="w-full text-center p-1 border border-gray-200 rounded font-bold" value={item.safetyStock} onChange={(e) => updateCookieItem(group.id, item.id, 'safetyStock', Number(e.target.value))} /></td>
@@ -997,6 +1047,8 @@
                                         <th className="p-3 w-24 text-center">單價</th>
                                         <th className="p-3 w-32 text-center bg-blue-50 text-blue-800">基準量 (平/假)</th>
                                         <th className="p-3 w-28 text-center bg-red-50 text-red-800">昨日下架</th>
+                                        {/* 新增欄位：目前庫存 */}
+                                        <th className="p-3 w-28 text-center bg-green-50 text-green-800">目前庫存</th>
                                         <th className="p-3 w-32 text-center bg-amber-50 text-amber-800 text-sm">建議進貨(個)</th>
                                         {isEditMode && <th className="p-3 w-16 text-center">操作</th>}
                                     </tr>
@@ -1045,6 +1097,10 @@
                                             </td>
                                             <td className="p-3 text-center bg-red-50/30">
                                                 <input type="number" className="w-full text-center bg-white border border-red-100 rounded outline-none font-medium text-red-700 focus:ring-1 focus:ring-red-300" placeholder="-" value={item.yesterdayUnsold} onChange={(e) => updateBreadItem(item.id, 'yesterdayUnsold', e.target.value === '' ? '' : Number(e.target.value))} />
+                                            </td>
+                                            {/* 新增欄位：目前庫存 */}
+                                            <td className="p-3 text-center bg-green-50/30">
+                                                <input type="number" className="w-full text-center bg-white border border-green-100 rounded outline-none font-medium text-green-700 focus:ring-1 focus:ring-green-300" placeholder="-" value={item.currentStock} onChange={(e) => updateBreadItem(item.id, 'currentStock', e.target.value === '' ? '' : Number(e.target.value))} />
                                             </td>
                                             <td className="p-3 text-center bg-amber-50/50">
                                                 <span className="text-lg font-bold text-amber-600">{item.suggestedQty > 0 ? item.suggestedQty : '-'}</span>
