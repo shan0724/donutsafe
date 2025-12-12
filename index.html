@@ -308,6 +308,27 @@
           const [toast, setToast] = useState(null);
           const [modal, setModal] = useState({ isOpen: false, title: '', content: null, action: null, type: 'info' });
 
+          // 新增：滾動偵測狀態 (Scroll Detection)
+          const [showStickyHeader, setShowStickyHeader] = useState(true);
+          const [lastScrollY, setLastScrollY] = useState(0);
+
+          useEffect(() => {
+            const handleScroll = () => {
+                const currentScrollY = window.scrollY;
+                
+                // 邏輯：當滾動超過 100px 且方向往下時隱藏，往上時顯示
+                if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                    setShowStickyHeader(false);
+                } else {
+                    setShowStickyHeader(true);
+                }
+                setLastScrollY(currentScrollY);
+            };
+
+            window.addEventListener('scroll', handleScroll, { passive: true });
+            return () => window.removeEventListener('scroll', handleScroll);
+          }, [lastScrollY]);
+
           // --- Initialization & Storage ---
           useEffect(() => {
             const savedData = localStorage.getItem(STORAGE_KEY);
@@ -364,47 +385,6 @@
             } catch (e) {
               showToast('儲存失敗，可能是瀏覽器空間不足。', 'error');
             }
-          };
-
-          const handleExportCSV = () => {
-              let csvContent = "\uFEFF"; // BOM for UTF-8 compatibility with Excel
-              let filename = "";
-              const dateStr = new Date().toISOString().slice(0, 10);
-
-              if (activeTab === 'cookies') {
-                  filename = `手工餅乾庫存_${dateStr}.csv`;
-                  csvContent += "群組,品名,規格,最少訂購量,安全庫存,進貨量,銷售數量,建議安庫量\n";
-                  cookieData.forEach(group => {
-                      group.items.forEach(item => {
-                          const suggested = calculateCookieSuggestedStock(item);
-                          csvContent += `${group.title},${item.name},${item.spec},${item.moq},${item.safetyStock},${item.recentPurchaseQty},${item.actualSellThroughQty},${suggested}\n`;
-                      });
-                  });
-              } else if (activeTab === 'cakes') {
-                  filename = `慕斯蛋糕下單_${dateStr}.csv`;
-                  csvContent += "群組,品名,類型,倍數設定,最大量,進貨量,下架數量,現場庫存,建議下單\n";
-                  cakeData.forEach(group => {
-                      group.items.forEach(item => {
-                           csvContent += `${group.title},${item.name},${item.type},${item.manualMultiplier},${item.maxQty},${item.lastPurchaseQty},${item.sellThroughQty},${item.currentStock},${item.suggestedOrder}\n`;
-                      });
-                  });
-              } else if (activeTab === 'bread') {
-                  filename = `麵包配單_${dateStr}.csv`;
-                  csvContent += "品名,單價,平日基準,假日基準,昨日下架,目前庫存,建議進貨,假日限定,季節限定\n";
-                  breadData.forEach(item => {
-                      csvContent += `${item.name},${item.price},${item.baseQtyWeekday},${item.baseQtyHoliday},${item.yesterdayUnsold},${item.currentStock},${item.suggestedQty},${item.isHolidayOnly ? '是' : '否'},${item.isSeasonal ? '是' : '否'}\n`;
-                  });
-              }
-
-              const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement("a");
-              link.setAttribute("href", url);
-              link.setAttribute("download", filename);
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              showToast(`已匯出 ${filename}`, 'success');
           };
 
           const handleResetRequest = () => {
@@ -756,7 +736,6 @@
                       <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2 rounded-full transition-colors ${isEditMode ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400 hover:text-gray-600'}`} title={isEditMode ? "結束編輯模式" : "進入編輯模式"}>{isEditMode ? <Unlock size={20} /> : <Lock size={20} />}</button>
                       <div className="h-8 w-px bg-gray-300 mx-1"></div>
                       <button onClick={handleResetRequest} className="text-gray-400 hover:text-red-500 p-2 transition-colors rounded-full hover:bg-red-50" title="重置全部資料"><RotateCcw size={18} /></button>
-                      <button onClick={handleExportCSV} className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-md transition-colors flex items-center gap-2 shadow-sm font-medium" title="匯出當前分頁資料為 CSV"><Download size={18} /> 匯出 CSV</button>
                       <button onClick={handleSave} className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2 rounded-md transition-colors flex items-center gap-2 shadow-sm font-medium"><Save size={18} /> 存檔</button>
                   </div>
                 </div>
@@ -773,7 +752,7 @@
               {/* === COOKIE TAB === */}
               {activeTab === 'cookies' && (
                 <div className="animate-in fade-in duration-300">
-                    <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4 border border-indigo-100 sticky top-2 z-10 shadow-md">
+                    <div className={`bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4 border border-indigo-100 sticky top-2 z-10 shadow-md transition-transform duration-300 ease-in-out ${showStickyHeader ? 'translate-y-0' : '-translate-y-[200%] opacity-0 pointer-events-none'}`}>
                         <div className="flex items-center gap-4 bg-indigo-50 px-4 py-3 rounded-lg border border-indigo-200 w-full md:w-auto">
                             <label className="text-xs font-bold text-indigo-700 flex items-center gap-1">目標下架率 <Info size={12} /></label>
                             <div className="flex items-center gap-2">
@@ -853,7 +832,7 @@
               {/* === CAKE TAB === */}
               {activeTab === 'cakes' && (
                 <div className="animate-in fade-in duration-300">
-                      <div className="bg-white p-4 rounded-lg shadow-md mb-6 border border-emerald-100 sticky top-2 z-10">
+                      <div className={`bg-white p-4 rounded-lg shadow-md mb-6 border border-emerald-100 sticky top-2 z-10 transition-transform duration-300 ease-in-out ${showStickyHeader ? 'translate-y-0' : '-translate-y-[200%] opacity-0 pointer-events-none'}`}>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                             <div className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${cakeArrivalType === 'weekday' ? 'bg-emerald-100 border-emerald-300 ring-2 ring-emerald-400' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`} onClick={() => setCakeArrivalType('weekday')}>
                                 <Calendar size={20} className={cakeArrivalType === 'weekday' ? 'text-emerald-600' : 'text-gray-400'} />
@@ -991,7 +970,7 @@
               {/* === BREAD TAB === */}
               {activeTab === 'bread' && (
                 <div className="animate-in fade-in duration-300">
-                    <div className="bg-white p-6 rounded-lg shadow-md mb-6 border border-amber-200 sticky top-2 z-10">
+                    <div className={`bg-white p-6 rounded-lg shadow-md mb-6 border border-amber-200 sticky top-2 z-10 transition-transform duration-300 ease-in-out ${showStickyHeader ? 'translate-y-0' : '-translate-y-[200%] opacity-0 pointer-events-none'}`}>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                             <div className="flex flex-col gap-2">
                                  <label className="text-sm font-bold text-gray-700 flex items-center gap-1"><DollarSign size={16} /> 今日下單金額</label>
