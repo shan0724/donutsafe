@@ -11,7 +11,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#ffffff">
     
-    <!-- 圖示設定 (加入主畫面時顯示) -->
+    <!-- 圖示設定 -->
     <link rel="apple-touch-icon" href="https://i.postimg.cc/632Hw4rR/LOGO.png">
     <link rel="icon" href="https://i.postimg.cc/632Hw4rR/LOGO.png">
     
@@ -30,14 +30,10 @@
         body { 
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
             background-color: #f3f4f6; 
-            /* 防止 iOS 回彈效果，讓它更像 App */
             overscroll-behavior-y: none;
         }
-        /* 隱藏滾動條但在內容溢出時允許滾動 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* 針對 iOS 安全區域的修正 */
         .safe-area-padding {
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
@@ -50,7 +46,7 @@
     <script type="text/babel" data-presets="typescript,react">
         const { useState, useEffect } = React;
 
-        // --- ICON 元件定義 (手動定義 SVG 以免除外部依賴) ---
+        // --- ICON 元件 ---
         const IconBase = ({ children, size = 24, className = "" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
         );
@@ -59,7 +55,6 @@
         const RefreshCw = (p) => <IconBase {...p}><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></IconBase>;
         const Info = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></IconBase>;
         const RotateCcw = (p) => <IconBase {...p}><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></IconBase>;
-        // 將原本的 X 改名為 CloseIcon 以避免命名衝突
         const CloseIcon = (p) => <IconBase {...p}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></IconBase>;
         const Check = (p) => <IconBase {...p}><polyline points="20 6 9 17 4 12"></polyline></IconBase>;
         const AlertTriangle = (p) => <IconBase {...p}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></IconBase>;
@@ -82,63 +77,12 @@
         const ArrowDownCircle = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></IconBase>;
         const Leaf = (p) => <IconBase {...p}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></IconBase>;
 
-        // --- 應用程式邏輯 ---
-        
-        // 型別定義 (在 JSDoc 註解中保留，實際運行時 Babel 會移除 TypeScript 語法)
-        type ScheduleType = 'Mon_Fri' | 'Wed_Sun' | 'Sat_Wed' | 'Tue_Sat' | 'Thu_Tue' | 'Tue_Sun' | 'Tue_Fri' | 'Sun_Thu' | 'Fri_Tue' | 'Sun_Fri' | 'Tue_Tue' | 'Mon_Sat' | 'Wed_Mon' | 'Fri_Wed' | 'Sat_Thu';
+        // --- 型別定義與常數 ---
+        // (這些介面僅供參考，Babel 會在執行時移除)
+        // type ScheduleType = ...
+        // interface CookieProduct ...
 
-        interface CookieProduct {
-          id: string;
-          name: string;
-          spec: string;
-          moq: number;
-          isMultiplier: boolean;
-          safetyStock: number;
-          recentPurchaseQty: number | '';
-          actualSellThroughQty: number | ''; 
-        }
-
-        interface CookieScheduleGroup {
-          id: ScheduleType;
-          title: string;
-          items: CookieProduct[];
-        }
-
-        type CakeType = 'mousse' | 'ambient';
-
-        interface CakeProduct {
-          id: string;
-          name: string;
-          type: CakeType;
-          scheduleId: string;
-          manualMultiplier: number;
-          maxQty: number;
-          lastPurchaseQty: number | '';
-          sellThroughQty: number | ''; 
-          currentStock: number | '';    
-          suggestedOrder: number;
-        }
-
-        interface CakeGroup {
-          id: string;
-          title: string;
-          items: CakeProduct[];
-        }
-
-        interface BreadProduct {
-          id: string;
-          name: string;
-          price: number;
-          baseQtyWeekday: number;
-          baseQtyHoliday: number;
-          isHolidayOnly?: boolean;
-          isSeasonal?: boolean;
-          yesterdayUnsold: number | '';
-          suggestedQty: number;
-        }
-
-        // --- 初始資料 ---
-        const INITIAL_COOKIE_DATA: CookieScheduleGroup[] = [
+        const INITIAL_COOKIE_DATA = [
           { id: 'Mon_Fri', title: '星期一下單，星期五到貨', items: [
               { id: 'p1', name: 'OREO舒芙蕾圓餅', spec: '最低量5盒以上', moq: 5, isMultiplier: false, safetyStock: 20, recentPurchaseQty: '', actualSellThroughQty: '' },
               { id: 'p2', name: '金元寶米菓(個)', spec: '以10的倍數下單', moq: 10, isMultiplier: true, safetyStock: 100, recentPurchaseQty: '', actualSellThroughQty: '' },
@@ -191,7 +135,7 @@
           ]}
         ];
 
-        const INITIAL_CAKE_DATA: CakeGroup[] = [
+        const INITIAL_CAKE_DATA = [
           { id: 'Group1', title: '第一組 (週一/四/日下單)', items: [
               { id: 'c1', name: '乳酪蛋糕', type: 'mousse', scheduleId: 'Group1', manualMultiplier: 3, maxQty: 40, lastPurchaseQty: '', sellThroughQty: 9.4, currentStock: '', suggestedOrder: 0 },
               { id: 'c2', name: '金芒雲階', type: 'mousse', scheduleId: 'Group1', manualMultiplier: 3, maxQty: 40, lastPurchaseQty: '', sellThroughQty: 8.8, currentStock: '', suggestedOrder: 0 },
@@ -215,7 +159,7 @@
           ]}
         ];
 
-        const INITIAL_BREAD_DATA: BreadProduct[] = [
+        const INITIAL_BREAD_DATA = [
           { id: 'b8', name: '焦糖奶油手撕包', price: 100, baseQtyWeekday: 20, baseQtyHoliday: 60, yesterdayUnsold: '', suggestedQty: 0 }, 
           { id: 'b7', name: '酒釀桂圓', price: 76, baseQtyWeekday: 15, baseQtyHoliday: 42, yesterdayUnsold: '', suggestedQty: 0 }, 
           { id: 'b12', name: '香蒜巴西里', price: 52, baseQtyWeekday: 12, baseQtyHoliday: 38, yesterdayUnsold: '', suggestedQty: 0 }, 
@@ -238,7 +182,7 @@
 
         const STORAGE_KEY = 'inventory_system_data_v22_offline';
 
-        const DAY_GROUP_MAP: Record<string, string[]> = {
+        const DAY_GROUP_MAP = {
           'Mon': ['Group1', 'Group4'],
           'Tue': ['Group2', 'Group4'],
           'Wed': ['Group3', 'Group4'],
@@ -284,7 +228,6 @@
         const Modal = ({ isOpen, title, content, onConfirm, onCancel, confirmText = "確定", cancelText = "取消", type = 'info', action }) => {
           if (!isOpen) return null;
 
-          // Helper to handle the confirm action
           const handleConfirm = () => {
               if (action) {
                   action();
@@ -324,8 +267,7 @@
           const [cakeData, setCakeData] = useState(INITIAL_CAKE_DATA);
           const [breadData, setBreadData] = useState(INITIAL_BREAD_DATA);
           
-          // 修改：將預設目標下架率從 85 改為 96
-          // 這樣設定代表：預期銷售 96% (容許 4% 報廢/過期)
+          // 預設 96%
           const [targetSellThroughRate, setTargetSellThroughRate] = useState(96);
           const [cakeArrivalType, setCakeArrivalType] = useState('weekday'); 
           const [isRaining, setIsRaining] = useState(false);
@@ -334,9 +276,7 @@
           const [orderDay, setOrderDay] = useState('All'); 
           const [isEditMode, setIsEditMode] = useState(false); 
 
-          // 新增：用於顯示慕斯蛋糕計算結果的文字狀態
           const [cakeCalculationResult, setCakeCalculationResult] = useState(null);
-          // 修改：慕斯蛋糕總庫存改為物件狀態，分開記錄現場與進貨
           const [cakeStockSummary, setCakeStockSummary] = useState({ current: 0, purchase: 0, total: 0 });
 
           const [breadOrderAmount, setBreadOrderAmount] = useState(8000); 
@@ -359,7 +299,13 @@
                 if (parsed.cakeData) setCakeData(parsed.cakeData);
                 if (parsed.breadData) setBreadData(parsed.breadData);
                 if (parsed.settings) {
-                    if (parsed.settings.targetSellThroughRate) setTargetSellThroughRate(parsed.settings.targetSellThroughRate);
+                    // 自動遷移邏輯：若為舊的 85，強制更新為 96
+                    if (parsed.settings.targetSellThroughRate === 85 || parsed.settings.targetSellThroughRate === undefined) {
+                         setTargetSellThroughRate(96);
+                    } else {
+                        setTargetSellThroughRate(parsed.settings.targetSellThroughRate);
+                    }
+                    
                     if (parsed.settings.breadOrderAmount) setBreadOrderAmount(parsed.settings.breadOrderAmount);
                 }
                 const now = new Date();
@@ -370,18 +316,22 @@
             }
           }, []);
 
-          // 修改 useEffect：當 cakeData 變動時，分別計算現場與進貨總量
+          // Cake Summary Logic
           useEffect(() => {
             let current = 0;
             let purchase = 0;
-            cakeData.forEach(group => {
-                group.items.forEach(item => {
-                    const stock = item.currentStock !== '' ? Number(item.currentStock) : 0;
-                    const buy = item.lastPurchaseQty !== '' ? Number(item.lastPurchaseQty) : 0;
-                    current += stock;
-                    purchase += buy;
+            if (Array.isArray(cakeData)) {
+                cakeData.forEach(group => {
+                    if (Array.isArray(group.items)) {
+                        group.items.forEach(item => {
+                            const stock = item.currentStock !== '' ? Number(item.currentStock) : 0;
+                            const buy = item.lastPurchaseQty !== '' ? Number(item.lastPurchaseQty) : 0;
+                            current += stock;
+                            purchase += buy;
+                        });
+                    }
                 });
-            });
+            }
             setCakeStockSummary({ current, purchase, total: current + purchase });
           }, [cakeData]);
 
@@ -426,6 +376,7 @@
             setCookieData(INITIAL_COOKIE_DATA);
             setCakeData(INITIAL_CAKE_DATA);
             setBreadData(INITIAL_BREAD_DATA);
+            setTargetSellThroughRate(96); 
             localStorage.removeItem(STORAGE_KEY);
             setLastSaved(null);
             setModal(prev => ({ ...prev, isOpen: false }));
@@ -436,20 +387,26 @@
           const calculateCookieSuggestedStock = (item) => {
             if (item.recentPurchaseQty === '' || item.recentPurchaseQty === 0 || 
                 item.actualSellThroughQty === '' || item.actualSellThroughQty === undefined) {
-                return item.safetyStock;
+                return Number(item.safetyStock); // Ensure number
             }
             const purchase = Number(item.recentPurchaseQty);
             const sold = Number(item.actualSellThroughQty);
-            const actualRate = (sold / purchase) * 100;
+            
+            // 安全檢查：若進貨為 0，避免除以零
+            if (purchase === 0) return Number(item.safetyStock);
 
-            // 新增邏輯：若實際下架率與目標下架率差距在 4% 以內，則不調整安庫量
-            if (Math.abs(actualRate - targetSellThroughRate) <= 4) {
-                return item.safetyStock;
+            const actualRate = (sold / purchase) * 100;
+            const currentSafetyStock = Number(item.safetyStock);
+
+            // 4% 容許範圍邏輯
+            // 將 targetSellThroughRate 強制轉為數字比較
+            if (Math.abs(actualRate - Number(targetSellThroughRate)) <= 4) {
+                return currentSafetyStock;
             }
 
-            const rateDiff = (actualRate - targetSellThroughRate) / 100;
+            const rateDiff = (actualRate - Number(targetSellThroughRate)) / 100;
             const clampedDiff = Math.max(-0.5, Math.min(0.5, rateDiff));
-            const newStock = Math.round(item.safetyStock * (1 + clampedDiff));
+            const newStock = Math.round(currentSafetyStock * (1 + clampedDiff));
             return newStock > 0 ? newStock : 0;
           };
 
@@ -579,22 +536,18 @@
                 orderDay === 'All' || activeGroupIds.includes(item.scheduleId)
             );
 
-            // 修改處：計算分配額度時，需扣除「所有品項」的 (現場數量 + 進貨量)
             let totalCurrentStock = 0;
-            let totalPurchaseQty = 0; // 新增：進貨量總和
+            let totalPurchaseQty = 0; 
 
             allItems.forEach(item => {
-                // 加總現場數量
                 if (item.currentStock !== '' && item.currentStock !== undefined) {
                     totalCurrentStock += Number(item.currentStock);
                 }
-                // 加總進貨量 (對應欄位：lastPurchaseQty)
                 if (item.lastPurchaseQty !== '' && item.lastPurchaseQty !== undefined) {
                     totalPurchaseQty += Number(item.lastPurchaseQty);
                 }
             });
 
-            // 公式：目標總量 - 現場數量總和 - 進貨量總和
             let netOrderPool = effectiveTotalTarget - totalCurrentStock - totalPurchaseQty;
             
             if (netOrderPool < 0) netOrderPool = 0;
@@ -638,7 +591,7 @@
             setCakeData(newData);
             
             const resultMsg = `計算完成：目標 ${Math.round(effectiveTotalTarget)} - 庫存 ${totalCurrentStock} - 進貨 ${totalPurchaseQty} = 分配額度 ${Math.round(netOrderPool)}`;
-            setCakeCalculationResult(resultMsg); // 設定顯示在按鈕下方的文字
+            setCakeCalculationResult(resultMsg);
             showToast(resultMsg, 'success');
           };
 
@@ -779,7 +732,8 @@
                             <RefreshCw size={18} /> 應用建議值
                         </button>
                     </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                         {cookieData.map((group) => (
                         <div key={group.id} className="bg-white border border-gray-300 shadow-sm flex flex-col rounded-md overflow-hidden h-full">
                             <div className="bg-gray-50 border-b border-gray-300 p-3"><span className="font-bold text-gray-700 text-sm">{group.title}</span></div>
