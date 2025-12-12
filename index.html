@@ -522,8 +522,9 @@
                 orderDay === 'All' || activeGroupIds.includes(item.scheduleId)
             );
 
+            // 修改處：計算目前總庫存時，改為加總「所有品項」(allItems) 的庫存，而非僅「當日下單品項」(activeItems)
             let totalCurrentStock = 0;
-            activeItems.forEach(item => {
+            allItems.forEach(item => {
                 if (item.currentStock !== '' && item.currentStock !== undefined) {
                     totalCurrentStock += Number(item.currentStock);
                 }
