@@ -343,7 +343,23 @@
             if (savedData) {
               try {
                 const parsed = JSON.parse(savedData);
-                if (parsed.cookieData) setCookieData(parsed.cookieData);
+                
+                // 修正：合併 cookieData 以確保新增的群組會顯示，同時保留舊有數據
+                if (parsed.cookieData) {
+                    const savedMap = new Map(parsed.cookieData.map(g => [g.id, g]));
+                    const mergedCookies = INITIAL_COOKIE_DATA.map(initGroup => {
+                        // 如果存檔中有這個群組，使用存檔的（保留使用者輸入的數值）
+                        if (savedMap.has(initGroup.id)) {
+                            return savedMap.get(initGroup.id);
+                        }
+                        // 如果存檔中沒有（這是新代碼新增的群組），則使用初始值
+                        return initGroup;
+                    });
+                    setCookieData(mergedCookies);
+                } else {
+                    setCookieData(INITIAL_COOKIE_DATA);
+                }
+
                 if (parsed.cakeData) setCakeData(parsed.cakeData);
                 if (parsed.breadData) setBreadData(parsed.breadData);
                 if (parsed.settings) {
@@ -355,6 +371,8 @@
                 setLastSaved(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
               } catch (e) {
                 console.error("Failed to load saved data", e);
+                // Fallback if parse fails
+                setCookieData(INITIAL_COOKIE_DATA);
               }
             }
           }, []);
