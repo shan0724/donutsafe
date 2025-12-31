@@ -19,7 +19,7 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- 引入 Babel (改用 React preset，移除 TypeScript 以加速手機解析) -->
+    <!-- 引入 Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <!-- 引入 Tailwind CSS -->
@@ -64,7 +64,6 @@
         <div class="text-sm mt-2 text-gray-400">若長時間無反應，請檢查網路連線</div>
     </div>
 
-    <!-- 移除 typescript preset，僅保留 react，大幅減少手機解析負擔 -->
     <script type="text/babel" data-presets="react">
         const { useState, useEffect, useRef } = React;
 
@@ -99,7 +98,7 @@
         const ArrowDownCircle = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></IconBase>;
         const Leaf = (p) => <IconBase {...p}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></IconBase>;
 
-        // --- 初始資料 (移除 TypeScript Type 定義以加速解析) ---
+        // --- 初始資料 ---
         const INITIAL_COOKIE_DATA = [
           { id: 'Mon_Fri', title: '星期一下單，星期五到貨', items: [
               { id: 'p1', name: 'OREO舒芙蕾圓餅', spec: '最低量5盒以上', moq: 5, isMultiplier: false, safetyStock: 20, recentPurchaseQty: '', actualSellThroughQty: '' },
@@ -131,6 +130,9 @@
           { id: 'Thu_Tue', title: '星期四下單，星期二到貨', items: [
               { id: 'p15', name: '杏仁瓦片', spec: '以10的倍數下單', moq: 10, isMultiplier: true, safetyStock: 60, recentPurchaseQty: '', actualSellThroughQty: '' },
               { id: 'p16', name: '海苔薄餅', spec: '以罐下單', moq: 1, isMultiplier: false, safetyStock: 15, recentPurchaseQty: '', actualSellThroughQty: '' },
+          ]},
+          { id: 'Fri_Tue', title: '星期五下單，星期二到貨', items: [
+              { id: 'p25', name: '滑溜布丁(原味)', spec: '最低量5罐以上', moq: 5, isMultiplier: false, safetyStock: 10, recentPurchaseQty: '', actualSellThroughQty: '' },
           ]},
           { id: 'Fri_Wed', title: '星期五下單，星期三到貨', items: [
                 { id: 'p17', name: '芙蘿餅乾(2入)', spec: '以10的倍數下單', moq: 10, isMultiplier: true, safetyStock: 60, recentPurchaseQty: '', actualSellThroughQty: '' },
@@ -288,6 +290,9 @@
           
           const [targetSellThroughRate, setTargetSellThroughRate] = useState(96);
           const [cakeArrivalType, setCakeArrivalType] = useState('weekday'); 
+          // 新增：慕斯蛋糕目標總量設定 (預設 100 / 170)
+          const [cakeTargets, setCakeTargets] = useState({ weekday: 100, weekend: 170 });
+
           const [isRaining, setIsRaining] = useState(false);
           const [isAfter4PM, setIsAfter4PM] = useState(false);
           const [holidayMultiplier, setHolidayMultiplier] = useState(1.0);
@@ -344,6 +349,7 @@
                 if (parsed.settings) {
                     if (parsed.settings.targetSellThroughRate) setTargetSellThroughRate(parsed.settings.targetSellThroughRate);
                     if (parsed.settings.breadOrderAmount) setBreadOrderAmount(parsed.settings.breadOrderAmount);
+                    if (parsed.settings.cakeTargets) setCakeTargets(parsed.settings.cakeTargets);
                 }
                 const now = new Date();
                 setLastSaved(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
@@ -378,7 +384,7 @@
                 cookieData,
                 cakeData,
                 breadData,
-                settings: { targetSellThroughRate, breadOrderAmount }
+                settings: { targetSellThroughRate, breadOrderAmount, cakeTargets }
               };
               localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
               const now = new Date();
@@ -409,6 +415,7 @@
             setCookieData(INITIAL_COOKIE_DATA);
             setCakeData(INITIAL_CAKE_DATA);
             setBreadData(INITIAL_BREAD_DATA);
+            setCakeTargets({ weekday: 100, weekend: 170 });
             localStorage.removeItem(STORAGE_KEY);
             setLastSaved(null);
             setModal(prev => ({ ...prev, isOpen: false }));
@@ -550,7 +557,8 @@
           };
 
           const calculateCakeOrders = () => {
-            const baseTotalTarget = cakeArrivalType === 'weekday' ? 100 : 170;
+            // 使用變數 cakeTargets
+            const baseTotalTarget = cakeArrivalType === 'weekday' ? cakeTargets.weekday : cakeTargets.weekend;
             let effectiveTotalTarget = baseTotalTarget * holidayMultiplier;
             if (isRaining) effectiveTotalTarget *= 0.9;
             if (isAfter4PM) effectiveTotalTarget *= 0.7;
@@ -748,7 +756,7 @@
                   <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-md mb-4 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
                       <Edit3 size={18} />
                       <span className="font-bold text-sm">目前為編輯模式：</span>
-                      <span className="text-sm">您可以直接修改品項名稱、規格、刪除舊品項或新增新品項。完成後請點擊上方鎖頭鎖定。</span>
+                      <span className="text-sm">您可以直接修改品項名稱、規格、目標總量、刪除舊品項或新增新品項。完成後請點擊上方鎖頭鎖定。</span>
                   </div>
               )}
 
@@ -837,13 +845,45 @@
                 <div className="animate-in fade-in duration-300">
                       <div className={`bg-white p-4 rounded-lg shadow-md mb-6 border border-emerald-100 sticky top-2 z-30 transition-transform duration-300 ease-in-out ${showStickyHeader ? 'translate-y-0' : '-translate-y-[200%] opacity-0 pointer-events-none'}`}>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            {/* 平日到貨卡片 */}
                             <div className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${cakeArrivalType === 'weekday' ? 'bg-emerald-100 border-emerald-300 ring-2 ring-emerald-400' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`} onClick={() => setCakeArrivalType('weekday')}>
                                 <Calendar size={20} className={cakeArrivalType === 'weekday' ? 'text-emerald-600' : 'text-gray-400'} />
-                                <div className="text-center"><span className="block text-sm font-bold text-gray-700">平日到貨 (二~四)</span><span className="text-xs text-gray-500">目標總量: 100</span></div>
+                                <div className="text-center">
+                                    <span className="block text-sm font-bold text-gray-700">平日到貨 (二~四)</span>
+                                    {isEditMode ? (
+                                        <div className="flex items-center justify-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                                            <span className="text-xs text-gray-500">目標:</span>
+                                            <input 
+                                                type="number" 
+                                                value={cakeTargets.weekday} 
+                                                onChange={(e) => setCakeTargets({...cakeTargets, weekday: Number(e.target.value)})}
+                                                className="w-12 text-center text-xs border border-emerald-400 rounded bg-white px-1"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <span className="text-xs text-gray-500">目標總量: {cakeTargets.weekday}</span>
+                                    )}
+                                </div>
                             </div>
+                            {/* 假日到貨卡片 */}
                             <div className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${cakeArrivalType === 'weekend' ? 'bg-emerald-100 border-emerald-300 ring-2 ring-emerald-400' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`} onClick={() => setCakeArrivalType('weekend')}>
                                 <Calendar size={20} className={cakeArrivalType === 'weekend' ? 'text-emerald-600' : 'text-gray-400'} />
-                                <div className="text-center"><span className="block text-sm font-bold text-gray-700">假日到貨 (五~一)</span><span className="text-xs text-gray-500">目標總量: 170</span></div>
+                                <div className="text-center">
+                                    <span className="block text-sm font-bold text-gray-700">假日到貨 (五~一)</span>
+                                    {isEditMode ? (
+                                        <div className="flex items-center justify-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                                            <span className="text-xs text-gray-500">目標:</span>
+                                            <input 
+                                                type="number" 
+                                                value={cakeTargets.weekend} 
+                                                onChange={(e) => setCakeTargets({...cakeTargets, weekend: Number(e.target.value)})}
+                                                className="w-12 text-center text-xs border border-emerald-400 rounded bg-white px-1"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <span className="text-xs text-gray-500">目標總量: {cakeTargets.weekend}</span>
+                                    )}
+                                </div>
                             </div>
                             <div className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${isRaining ? 'bg-blue-100 border-blue-300 ring-2 ring-blue-400' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`} onClick={() => setIsRaining(!isRaining)}>
                                 {isRaining ? <CloudRain size={20} className="text-blue-600" /> : <Sun size={20} className="text-gray-400" />}
